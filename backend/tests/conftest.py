@@ -43,7 +43,16 @@ def client(db, audit_calls):
 
 @pytest.fixture()
 def users(db):
-    return {u.email.split("@")[0]: u for u in db.scalars(select(User))}
+    """Aliases the shared fixture ids (u1-u4, see dev_auth.py) plus Vineeth's
+    u5 back to the role names the rest of the test suite already uses."""
+    rows = {u.id: u for u in db.scalars(select(User))}
+    return {
+        "employee": rows["u1"],
+        "manager": rows["u2"],
+        "admin": rows["u3"],
+        "auditor": rows["u4"],
+        "employee2": rows["u5"],
+    }
 
 
 @pytest.fixture()

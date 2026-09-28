@@ -34,8 +34,7 @@ export interface WalletNonceResponse {
 
 export interface WalletVerifyBody {
   address: string;
-  nonce: string;
-  signature: string;
+  signature: string; // no nonce field - the backend looks it up by address (wallet_auth.md 2.2)
 }
 
 // ---- files ----

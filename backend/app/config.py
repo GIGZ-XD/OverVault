@@ -22,7 +22,9 @@ class Settings(BaseSettings):
     jwt_secret: str = "dev-jwt-secret-change-me-please-32b-min"
     jwt_algorithm: str = "HS256"
     jwt_expire_minutes: int = 60
-    wallet_auto_provision: bool = True  # create an employee on first wallet login
+    # wallet_auto_provision removed - per wallet_auth.md section 9, unregistered
+    # wallet addresses must get 403 (address_not_found), never be auto-created.
+    # See ADR 0007.
 
     # Workers
     run_expiry_job: bool = True
