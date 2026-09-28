@@ -1,10 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.chain.real import RealChainService
+from app.config import settings
 from app.workers.outbox_worker import process_pending_events
-
 
 engine = create_engine(
     settings.database_url.replace("+psycopg", "+psycopg2")

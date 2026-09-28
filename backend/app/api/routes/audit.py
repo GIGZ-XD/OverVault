@@ -15,12 +15,12 @@ from __future__ import annotations
 from collections.abc import Generator
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models.audit_outbox import AuditOutbox, Base
+from app.models.audit_outbox import AuditOutbox
 from app.schemas.audit import AuditEventCreate, AuditEventResponse, AuditTrailResponse
 from app.services import audit as audit_service
 

@@ -25,7 +25,6 @@ from app.api.routes.audit import get_db
 from app.main import app
 from app.models.audit_outbox import Base
 
-
 # ---------------------------------------------------------------------------
 # Shared in-memory engine (StaticPool keeps the same connection across threads)
 # ---------------------------------------------------------------------------

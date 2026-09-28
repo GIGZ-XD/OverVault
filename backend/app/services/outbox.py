@@ -17,7 +17,7 @@ Owner: Sriganesh (Blockchain & Audit Engineer).
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -40,7 +40,7 @@ MAX_RETRIES: int = 5
 
 def _now() -> datetime:
     """Return the current UTC datetime (extracted for easy test patching)."""
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _encode_payload(payload: dict[str, Any] | None) -> str | None:

@@ -1,7 +1,7 @@
 """FastAPI dependencies: db session, current user, chain service selection."""
-from app.config import settings
 from app.chain.fake import FakeChainService
 from app.chain.real import RealChainService
+from app.config import settings
 
 
 def get_chain_service():

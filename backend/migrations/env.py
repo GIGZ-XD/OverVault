@@ -1,11 +1,8 @@
-from logging.config import fileConfig
 import os
 import sys
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
-
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
 # Add backend root to Python path
 sys.path.append(
@@ -15,7 +12,6 @@ sys.path.append(
 )
 
 from app.models.audit_outbox import Base
-
 
 # Alembic Config object
 config = context.config

@@ -11,7 +11,7 @@ Uses SQLite in-memory so no real database or migrations are needed.
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy import create_engine
@@ -21,7 +21,6 @@ from app.models.audit_outbox import AuditOutbox, Base
 from app.schemas.audit import AuditEventCreate, AuditEventResponse
 from app.services import audit as audit_service
 from app.services import outbox as outbox_service
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -260,7 +259,7 @@ class TestSchemas:
         assert data.payload is None
 
     def test_audit_event_response_from_dict(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         resp = AuditEventResponse(
             id="abc-123",
             event_type="upload",

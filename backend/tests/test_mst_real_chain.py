@@ -25,8 +25,8 @@ from __future__ import annotations
 
 import json
 import os
-from pathlib import Path
 import uuid
+from pathlib import Path
 
 import pytest
 from web3 import Web3
