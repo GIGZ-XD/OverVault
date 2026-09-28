@@ -63,8 +63,8 @@ export default function AccessPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-text">Access Control & Role Grants</h2>
-          <p className="text-xs text-text-muted mt-0.5">
+          <h2 className="text-xl font-bold text-ink">Access Control & Role Grants</h2>
+          <p className="text-xs text-ink-muted-48 mt-0.5">
             Cryptographically enforced document permission grants with automatic expiration.
           </p>
         </div>
@@ -92,8 +92,8 @@ export default function AccessPage() {
                 {u.id.toUpperCase()}
               </div>
               <div className="flex-1 overflow-hidden">
-                <span className="text-sm font-semibold text-text block truncate">{u.name}</span>
-                <span className="text-xs text-text-muted font-mono uppercase tracking-wider block">
+                <span className="text-sm font-semibold text-ink block truncate">{u.name}</span>
+                <span className="text-xs text-ink-muted-48 font-mono uppercase tracking-wider block">
                   {u.role}
                 </span>
               </div>
@@ -104,7 +104,7 @@ export default function AccessPage() {
 
       {/* Active Grants Table */}
       <div className="space-y-3">
-        <h3 className="text-base font-bold text-text flex items-center gap-2">
+        <h3 className="text-base font-bold text-ink flex items-center gap-2">
           <KeyRound className="w-4 h-4 text-accent" /> Active Document Grants
         </h3>
         <GrantsTable grants={grants} isLoading={isLoading} onRevoke={handleRevoke} />

@@ -80,10 +80,13 @@ export const handlers = [
       id: `e${Date.now()}`,
       event_type: "ownership_register",
       file_id: newFile.id,
+      file_name: newFile.name,
       actor: "0xaaa1",
+      actor_name: "Asha Rao",
       tx_hash: newFile.ownership_tx,
       verification: "verified",
       timestamp: Math.floor(Date.now() / 1000),
+      detail: `Registered SHA-256 ownership digest for ${newFile.name}`,
     });
 
     return HttpResponse.json(newFile, { status: 201 });

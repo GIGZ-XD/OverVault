@@ -5,10 +5,31 @@ services:
     environment:
       DATABASE_URL: sqlite:////data/overvault.db
       STORAGE_DIR: /data/storage
+      CORS_ORIGINS: '["http://localhost:3000"]'
     volumes:
       - overvault-data:/data
     ports:
       - "8000:8000"
-  # frontend: added by Pavan (Next.js on :3000)
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:8000
+      NEXT_PUBLIC_API_MODE: real
+      NEXT_PUBLIC_WALLET_MODE: mock
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   overvault-data:

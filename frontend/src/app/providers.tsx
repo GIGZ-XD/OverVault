@@ -53,7 +53,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
 
   if (!isReady) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-bg text-text-muted text-xs font-mono">
+      <div className="flex min-h-screen items-center justify-center bg-bg text-ink-muted-48 text-xs font-mono">
         Initializing vault services...
       </div>
     );

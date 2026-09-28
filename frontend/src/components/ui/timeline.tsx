@@ -24,11 +24,11 @@ export function Timeline({ items, className }: TimelineProps) {
             {item.icon || <div className="w-1.5 h-1.5 rounded-full bg-accent" />}
           </div>
           <div className="flex items-center justify-between gap-2">
-            <h4 className="text-sm font-semibold text-text flex items-center gap-2">{item.title}</h4>
+            <h4 className="text-sm font-semibold text-ink flex items-center gap-2">{item.title}</h4>
             {item.badge}
           </div>
-          {item.timestamp && <span className="text-[11px] font-mono text-text-dim">{item.timestamp}</span>}
-          {item.description && <div className="text-xs text-text-muted mt-1">{item.description}</div>}
+          {item.timestamp && <span className="text-[11px] font-mono text-ink-muted-48">{item.timestamp}</span>}
+          {item.description && <div className="text-xs text-ink-muted-48 mt-1">{item.description}</div>}
         </div>
       ))}
     </div>

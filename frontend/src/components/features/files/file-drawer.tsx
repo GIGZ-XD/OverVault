@@ -101,13 +101,13 @@ export function FileDrawer({
       }
     >
       {/* Navigation Tabs */}
-      <div className="flex border-b border-border gap-4 text-xs font-semibold">
+      <div className="flex border-b border-hairline gap-4 text-xs font-semibold">
         <button
           onClick={() => setActiveTab("overview")}
           className={`pb-2 transition-colors border-b-2 ${
             activeTab === "overview"
               ? "border-accent text-accent font-bold"
-              : "border-transparent text-text-muted hover:text-text"
+              : "border-transparent text-ink-muted-48 hover:text-ink"
           }`}
         >
           Overview & Audit
@@ -117,7 +117,7 @@ export function FileDrawer({
           className={`pb-2 transition-colors border-b-2 flex items-center gap-1.5 ${
             activeTab === "versions"
               ? "border-accent text-accent font-bold"
-              : "border-transparent text-text-muted hover:text-text"
+              : "border-transparent text-ink-muted-48 hover:text-ink"
           }`}
         >
           <GitBranch className="w-3.5 h-3.5" />
@@ -128,7 +128,7 @@ export function FileDrawer({
           className={`pb-2 transition-colors border-b-2 flex items-center gap-1.5 ${
             activeTab === "protection"
               ? "border-accent text-accent font-bold"
-              : "border-transparent text-text-muted hover:text-text"
+              : "border-transparent text-ink-muted-48 hover:text-ink"
           }`}
         >
           <Lock className="w-3.5 h-3.5" />
@@ -144,37 +144,37 @@ export function FileDrawer({
             <ShieldCheck className="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <h4 className="text-sm font-semibold text-emerald-400">Cryptographic Integrity Verified</h4>
-              <p className="text-xs text-text-muted mt-0.5">
+              <p className="text-xs text-ink-muted-48 mt-0.5">
                 File hash matches the immutably logged digest on MST Blockchain.
               </p>
             </div>
           </div>
 
           {/* Details Table */}
-          <div className="rounded-lg border border-border bg-surface-2/30 divide-y divide-border/60 text-xs">
+          <div className="rounded-lg border border-hairline bg-surface-2/30 divide-y divide-border/60 text-xs">
             <div className="p-3 flex justify-between">
-              <span className="text-text-muted font-medium">Owner / Author</span>
-              <span className="font-mono text-text font-semibold">{file.owner}</span>
+              <span className="text-ink-muted-48 font-medium">Owner / Author</span>
+              <span className="font-mono text-ink font-semibold">{file.owner}</span>
             </div>
             <div className="p-3 flex justify-between">
-              <span className="text-text-muted font-medium">File Size</span>
-              <span className="font-mono text-text">{formatBytes(file.size)}</span>
+              <span className="text-ink-muted-48 font-medium">File Size</span>
+              <span className="font-mono text-ink">{formatBytes(file.size)}</span>
             </div>
             <div className="p-3 flex justify-between items-center">
-              <span className="text-text-muted font-medium">Protection Mode</span>
+              <span className="text-ink-muted-48 font-medium">Protection Mode</span>
               <Badge variant={file.protection === "read-only" ? "read-only" : "default"}>
                 {file.protection}
               </Badge>
             </div>
             <div className="p-3 flex justify-between items-center">
-              <span className="text-text-muted font-medium">SHA-256 Hash</span>
-              <span className="font-mono text-xs text-accent bg-surface-2 px-2 py-0.5 rounded border border-border/80">
+              <span className="text-ink-muted-48 font-medium">SHA-256 Hash</span>
+              <span className="font-mono text-xs text-accent bg-parchment px-2 py-0.5 rounded border border-border/80">
                 {file.hash}
               </span>
             </div>
             {file.ownership_tx && (
               <div className="p-3 flex justify-between items-center">
-                <span className="text-text-muted font-medium">MST Transaction</span>
+                <span className="text-ink-muted-48 font-medium">MST Transaction</span>
                 <span className="font-mono text-xs text-sky-400 flex items-center gap-1 hover:underline cursor-pointer">
                   {file.ownership_tx} <ExternalLink className="w-3 h-3" />
                 </span>
@@ -187,7 +187,7 @@ export function FileDrawer({
       {/* Tab 2: Version History */}
       {activeTab === "versions" && (
         <div className="space-y-4">
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-ink-muted-48">
             All document revisions are immutable and signed. Rollback restores previous content state on the blockchain.
           </p>
           <VersionTimeline
@@ -199,11 +199,11 @@ export function FileDrawer({
 
       {/* Tab 3: Protection Rules */}
       {activeTab === "protection" && (
-        <div className="space-y-4 p-4 rounded-xl border border-border bg-surface-2/20">
-          <h4 className="text-sm font-semibold text-text flex items-center gap-2">
+        <div className="space-y-4 p-4 rounded-xl border border-hairline bg-surface-2/20">
+          <h4 className="text-sm font-semibold text-ink flex items-center gap-2">
             <Lock className="w-4 h-4 text-accent" /> Smart Contract Protection Mode
           </h4>
-          <p className="text-xs text-text-muted">
+          <p className="text-xs text-ink-muted-48">
             Update access rules enforced on-chain. Read-only prevents modifications; append-only allows adding new versions without overwriting existing history.
           </p>
 

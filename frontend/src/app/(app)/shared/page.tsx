@@ -65,10 +65,10 @@ export default function SharedPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h2 className="text-xl font-bold text-text flex items-center gap-2">
+        <h2 className="text-xl font-bold text-ink flex items-center gap-2">
           <Share2 className="w-5 h-5 text-accent" /> Shared Vault Documents
         </h2>
-        <p className="text-xs text-text-muted mt-0.5">
+        <p className="text-xs text-ink-muted-48 mt-0.5">
           Documents shared with your account or organization role with read/write grants.
         </p>
       </div>

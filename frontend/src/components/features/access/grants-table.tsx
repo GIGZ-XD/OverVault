@@ -33,8 +33,8 @@ export function GrantsTable({ grants, isLoading, onRevoke }: GrantsTableProps) {
             {item.grantee.toUpperCase()}
           </div>
           <div>
-            <span className="font-semibold text-text text-sm font-mono">{item.grantee}</span>
-            <span className="text-[11px] text-text-muted block">File ID: {item.file_id}</span>
+            <span className="font-semibold text-ink text-sm font-mono">{item.grantee}</span>
+            <span className="text-[11px] text-ink-muted-48 block">File ID: {item.file_id}</span>
           </div>
         </div>
       ),
@@ -46,8 +46,8 @@ export function GrantsTable({ grants, isLoading, onRevoke }: GrantsTableProps) {
     {
       header: "Expiration Date",
       cell: (item) => (
-        <span className="font-mono text-xs text-text-muted flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-text-dim" />
+        <span className="font-mono text-xs text-ink-muted-48 flex items-center gap-1.5">
+          <Clock className="w-3.5 h-3.5 text-ink-muted-48" />
           {formatDate(item.expires_at)}
         </span>
       ),
