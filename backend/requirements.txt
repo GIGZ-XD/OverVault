@@ -9,4 +9,5 @@ pyjwt
 cryptography
 boto3
 eth-account
+web3>=7
 # mst-sdk-python  (add the exact package name/version from docs.mstblockchain.com)
