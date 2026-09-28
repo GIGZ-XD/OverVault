@@ -1,0 +1,4 @@
+"""User and role routes."""
+from fastapi import APIRouter
+
+router = APIRouter()

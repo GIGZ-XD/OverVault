@@ -1,0 +1,10 @@
+# Replace with real GitHub usernames
+/frontend/                         @pavan-gh
+/frontend/src/lib/wallet/          @pannaga-gh
+/backend/                          @vineeth-gh
+/backend/app/chain/                @ganesh-gh
+/backend/app/auth/wallet_auth/     @pannaga-gh
+/contracts/                        @ganesh-gh
+/e2e/                              @pannaga-gh
+/docs/                             @pannaga-gh
+/specs/                            @pavan-gh @ganesh-gh @vineeth-gh @pannaga-gh

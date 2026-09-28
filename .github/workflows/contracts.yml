@@ -1,0 +1,11 @@
+name: contracts
+on:
+  push: { paths: ["contracts/**"] }
+  pull_request: { paths: ["contracts/**"] }
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Contract tests
+        run: echo "Add contract test command here (depends on MST contract toolchain)"

@@ -1,0 +1,26 @@
+{
+  "network": "mst-testnet",
+  "updated": "",
+  "contracts": {
+    "ownership": {
+      "address": "",
+      "abi": "",
+      "deploy_tx": ""
+    },
+    "permission": {
+      "address": "",
+      "abi": "",
+      "deploy_tx": ""
+    },
+    "integrity": {
+      "address": "",
+      "abi": "",
+      "deploy_tx": ""
+    },
+    "audit": {
+      "address": "",
+      "abi": "",
+      "deploy_tx": ""
+    }
+  }
+}

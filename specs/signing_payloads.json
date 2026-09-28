@@ -1,0 +1,42 @@
+{
+  "_note": "Owner: Pannaga. Human readable text shown in wallet for each on-chain action.",
+  "ownership_register": {
+    "template": "Register ownership of file {file_id} (hash {hash}) to {owner}",
+    "fields": [
+      "file_id",
+      "hash",
+      "owner"
+    ]
+  },
+  "permission_grant": {
+    "template": "Grant {permission} on file {file_id} to {grantee} until {expiry}",
+    "fields": [
+      "file_id",
+      "permission",
+      "grantee",
+      "expiry"
+    ]
+  },
+  "permission_revoke": {
+    "template": "Revoke access on file {file_id} from {grantee}",
+    "fields": [
+      "file_id",
+      "grantee"
+    ]
+  },
+  "approval_decision": {
+    "template": "{decision} change {approval_id} on file {file_id}",
+    "fields": [
+      "decision",
+      "approval_id",
+      "file_id"
+    ]
+  },
+  "rollback": {
+    "template": "Roll back file {file_id} to version {version}",
+    "fields": [
+      "file_id",
+      "version"
+    ]
+  }
+}
