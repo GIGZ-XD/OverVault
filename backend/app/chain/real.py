@@ -231,8 +231,8 @@ class RealChainService:
         except ContractLogicError as exc:
             logger.warning("Contract reverted: %s", exc)
             raise
-        except Exception as exc:
-            logger.error("Unexpected error sending transaction: %s", exc, exc_info=True)
+        except Exception:
+            logger.exception("Unexpected error sending transaction")
             raise
 
     # -----------------------------------------------------------------------
@@ -267,7 +267,7 @@ class RealChainService:
         # Anchor initial hash as version 1 (mirrors FakeChainService behaviour)
         try:
             self.commit_hash(file_id, 1, content_hash)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "register_ownership: could not anchor initial hash for %s: %s",
                 file_id,
@@ -348,7 +348,7 @@ class RealChainService:
             return bool(
                 self._integrity.functions.verifyHash(file_id, version, content_hash).call()
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("verify_hash error for %s v%s: %s", file_id, version, exc)
             return False
 
@@ -390,7 +390,7 @@ class RealChainService:
         """
         try:
             indices: list[int] = self._audit.functions.getEntriesForRef(file_id).call()
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("get_audit_trail: getEntriesForRef failed for %s: %s", file_id, exc)
             return []
 
@@ -413,7 +413,7 @@ class RealChainService:
                         timestamp=int(timestamp),
                     )
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("get_audit_trail: getEntry(%s) failed: %s", idx, exc)
                 continue
 
@@ -437,7 +437,7 @@ class RealChainService:
         """
         try:
             receipt = self._w3.eth.get_transaction_receipt(tx_hash)
-        except Exception:
+        except Exception:  # noqa: BLE001
             receipt = None
 
         if receipt is None:

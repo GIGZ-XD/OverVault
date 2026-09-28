@@ -24,6 +24,7 @@ Owner: Sriganesh (Blockchain & Audit Engineer).
 from __future__ import annotations
 
 import json
+import logging
 import os
 import uuid
 from pathlib import Path
@@ -35,6 +36,7 @@ from web3.middleware import ExtraDataToPOAMiddleware
 from app.chain.base import TxResult
 from app.chain.real import RealChainService
 
+logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 # Resolve Configuration (Environment Variables with testnet artifact fallback)
 # ---------------------------------------------------------------------------
@@ -51,8 +53,10 @@ _ADDR_INTEGRITY = os.environ.get("CONTRACT_ADDRESS_INTEGRITY", "").strip()
 _ADDR_OWNERSHIP = os.environ.get("CONTRACT_ADDRESS_OWNERSHIP", "").strip()
 _ADDR_PERMISSION = os.environ.get("CONTRACT_ADDRESS_PERMISSION", "").strip()
 
-if not all([_ADDR_AUDIT, _ADDR_INTEGRITY, _ADDR_OWNERSHIP, _ADDR_PERMISSION]):
-    if _DEPLOYED_TESTNET_JSON.exists():
+if (
+    not all([_ADDR_AUDIT, _ADDR_INTEGRITY, _ADDR_OWNERSHIP, _ADDR_PERMISSION])
+    and _DEPLOYED_TESTNET_JSON.exists()
+):
         try:
             with open(_DEPLOYED_TESTNET_JSON, "r", encoding="utf-8") as f:
                 _data = json.load(f)
@@ -61,8 +65,8 @@ if not all([_ADDR_AUDIT, _ADDR_INTEGRITY, _ADDR_OWNERSHIP, _ADDR_PERMISSION]):
                 _ADDR_INTEGRITY = _ADDR_INTEGRITY or contracts.get("integrity", {}).get("address", "")
                 _ADDR_OWNERSHIP = _ADDR_OWNERSHIP or contracts.get("ownership", {}).get("address", "")
                 _ADDR_PERMISSION = _ADDR_PERMISSION or contracts.get("permission", {}).get("address", "")
-        except Exception:
-            pass
+        except (OSError, ValueError, KeyError) as exc:
+            logger.debug("Could not load deployed testnet contracts: %s", exc)
 
 # ---------------------------------------------------------------------------
 # Auto-skip check
