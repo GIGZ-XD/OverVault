@@ -2,9 +2,10 @@
 
 Provides request/response schemas for the audit outbox pipeline.
 
-- ``AuditEventCreate``   — validates incoming audit event data.
-- ``AuditEventResponse`` — serialises outbox rows for API responses and
-                           internal service returns.
+- ``AuditEventCreate``    — validates incoming audit event data.
+- ``AuditEventResponse``  — serialises outbox rows for API responses and
+                            internal service returns.
+- ``AuditTrailResponse``  — a single entry in a file's chronological audit trail.
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
@@ -33,7 +34,7 @@ class AuditEventCreate(BaseModel):
         min_length=1,
         max_length=64,
         description="Semantic event label, e.g. 'upload', 'approve', 'grant_permission'.",
-        examples=["upload"],
+        examples=["FILE_UPLOADED"],
     )
     reference_id: str = Field(
         ...,
@@ -52,12 +53,12 @@ class AuditEventCreate(BaseModel):
     payload: dict[str, Any] | None = Field(
         default=None,
         description="Optional extra context. Stored as JSON in the database.",
-        examples=[{"filename": "report.pdf", "size_bytes": 204800}],
+        examples=[{"hash": "abc123", "size_bytes": 204800}],
     )
 
 
 # ---------------------------------------------------------------------------
-# Response schema
+# Response schemas
 # ---------------------------------------------------------------------------
 
 
@@ -84,6 +85,31 @@ class AuditEventResponse(BaseModel):
     tx_hash: str | None = Field(
         default=None,
         description="On-chain transaction hash. None until submitted to blockchain.",
+    )
+    created_at: datetime = Field(..., description="UTC timestamp when the event was recorded.")
+
+    model_config = {"from_attributes": True}
+
+
+class AuditTrailResponse(BaseModel):
+    """A single entry in a file's chronological audit trail.
+
+    Returned by ``GET /audit/{file_id}`` as a list element.
+    Omits internal fields (``id``, ``retry_count``) that are not relevant
+    to API consumers; exposes ``tx_hash`` and ``status`` for blockchain
+    transparency.
+    """
+
+    event_type: str = Field(..., description="Semantic event label.")
+    reference_id: str = Field(..., description="Subject identifier.")
+    actor: str = Field(..., description="User or wallet that triggered the event.")
+    status: str = Field(
+        ...,
+        description="Current lifecycle state: pending | submitted | confirmed | failed.",
+    )
+    tx_hash: str | None = Field(
+        default=None,
+        description="On-chain transaction hash if the event has been submitted.",
     )
     created_at: datetime = Field(..., description="UTC timestamp when the event was recorded.")
 
