@@ -7,6 +7,6 @@ export type { Ownership } from './Ownership.js';
 export type { Permission } from './Permission.js';
 export * as factories from './factories/index.js';
 export { Audit__factory } from './factories/Audit__factory.js';
-export { Integrity__factory } from './factories/Integrity__factory.js';
 export { Ownership__factory } from './factories/Ownership__factory.js';
+export { Integrity__factory } from './factories/Integrity__factory.js';
 export { Permission__factory } from './factories/Permission__factory.js';

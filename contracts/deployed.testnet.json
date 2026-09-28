@@ -1,26 +1,26 @@
 {
-  "network": "mst-testnet",
-  "updated": "",
+  "network": "mst_testnet",
+  "updated": "2026-09-28T19:50:41.091Z",
   "contracts": {
     "ownership": {
-      "address": "",
-      "abi": "",
-      "deploy_tx": ""
+      "address": "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9",
+      "abi": "src/Ownership.sol/Ownership.json",
+      "deploy_tx": "0xfa86244cd1228d62751a1012a9e26aa1d1ffad575f26edd460bb8002a6a43da1"
     },
     "permission": {
-      "address": "",
-      "abi": "",
-      "deploy_tx": ""
+      "address": "0x5FC8d32690cc91D4c39d9d3abcBD16989F875707",
+      "abi": "src/Permission.sol/Permission.json",
+      "deploy_tx": "0x8cab8fdb2c0e36f12b0a3da87ab5a593383c1cd4f305e43f70ecadfc9fe9b247"
     },
     "integrity": {
-      "address": "",
-      "abi": "",
-      "deploy_tx": ""
+      "address": "0x0165878A594ca255338adfa4d48449f69242Eb8F",
+      "abi": "src/Integrity.sol/Integrity.json",
+      "deploy_tx": "0x32d4a716073342cf10e83069d7fdd95fe5474f45bcc2694bffa9a9ec40139863"
     },
     "audit": {
-      "address": "",
-      "abi": "",
-      "deploy_tx": ""
+      "address": "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
+      "abi": "src/Audit.sol/Audit.json",
+      "deploy_tx": "0x360d3df5eec3dc87cdb3e543f73851e37410f0ffd2da240b23930cea58a7b135"
     }
   }
 }

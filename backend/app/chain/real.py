@@ -74,22 +74,26 @@ def _load_abi(contract_name: str) -> list[dict]:
 # Config helper — raises an informative error on missing vars
 # ---------------------------------------------------------------------------
 
-def _require_env(name: str) -> str:
-    """Return the value of *name* from the environment or raise ``ValueError``.
+def _require_env(name: str, fallback: str | None = None) -> str:
+    """Read a required environment variable or its fallback, raising ValueError if missing.
 
     Args:
-        name: Environment variable name.
+        name: Primary environment variable name.
+        fallback: Optional fallback variable name (e.g. MST_*).
 
     Returns:
         The non-empty string value.
 
     Raises:
-        ValueError: If the variable is unset or empty.
+        ValueError: If neither variable is set or non-empty.
     """
     value = os.environ.get(name, "").strip()
+    if not value and fallback:
+        value = os.environ.get(fallback, "").strip()
     if not value:
+        var_desc = f"'{name}'" if not fallback else f"'{name}' or '{fallback}'"
         raise ValueError(
-            f"RealChainService: required environment variable '{name}' is not set. "
+            f"RealChainService: required environment variable {var_desc} is not set. "
             f"Add it to your .env file or export it before starting the backend."
         )
     return value
@@ -113,33 +117,49 @@ class RealChainService:
     transaction account.  Use one instance per process (not per request).
     """
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        rpc_url: str | None = None,
+        private_key: str | None = None,
+        contract_address_audit: str | None = None,
+        contract_address_integrity: str | None = None,
+        contract_address_ownership: str | None = None,
+        contract_address_permission: str | None = None,
+    ) -> None:
         # ── Validate configuration ─────────────────────────────────────────
-        rpc_url = _require_env("EVM_RPC_URL")
-        private_key = _require_env("EVM_PRIVATE_KEY")
-        self._addr_audit = Web3.to_checksum_address(_require_env("CONTRACT_ADDRESS_AUDIT"))
-        self._addr_integrity = Web3.to_checksum_address(_require_env("CONTRACT_ADDRESS_INTEGRITY"))
-        self._addr_ownership = Web3.to_checksum_address(_require_env("CONTRACT_ADDRESS_OWNERSHIP"))
-        self._addr_permission = Web3.to_checksum_address(_require_env("CONTRACT_ADDRESS_PERMISSION"))
+        resolved_rpc_url = rpc_url or _require_env("EVM_RPC_URL", fallback="MST_RPC_URL")
+        resolved_private_key = private_key or _require_env("EVM_PRIVATE_KEY", fallback="MST_PRIVATE_KEY")
+        self._addr_audit = Web3.to_checksum_address(
+            contract_address_audit or _require_env("CONTRACT_ADDRESS_AUDIT")
+        )
+        self._addr_integrity = Web3.to_checksum_address(
+            contract_address_integrity or _require_env("CONTRACT_ADDRESS_INTEGRITY")
+        )
+        self._addr_ownership = Web3.to_checksum_address(
+            contract_address_ownership or _require_env("CONTRACT_ADDRESS_OWNERSHIP")
+        )
+        self._addr_permission = Web3.to_checksum_address(
+            contract_address_permission or _require_env("CONTRACT_ADDRESS_PERMISSION")
+        )
 
         # ── Connect to RPC ─────────────────────────────────────────────────
-        self._w3 = Web3(Web3.HTTPProvider(rpc_url))
+        self._w3 = Web3(Web3.HTTPProvider(resolved_rpc_url))
         # Inject PoA middleware (needed for Hardhat/Clique chains)
         self._w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
         if not self._w3.is_connected():
             raise ConnectionError(
-                f"RealChainService: cannot connect to EVM node at '{rpc_url}'. "
-                f"Make sure Hardhat is running (`npx hardhat node`)."
+                f"RealChainService: cannot connect to EVM node at '{resolved_rpc_url}'. "
+                f"Make sure node is running and RPC endpoint is reachable."
             )
         logger.info(
             "RealChainService connected — chainId=%s rpc=%s",
             self._w3.eth.chain_id,
-            rpc_url,
+            resolved_rpc_url,
         )
 
         # ── Signing account ────────────────────────────────────────────────
-        self._account = self._w3.eth.account.from_key(private_key)
+        self._account = self._w3.eth.account.from_key(resolved_private_key)
         logger.info("RealChainService signer: %s", self._account.address)
 
         # ── Load ABIs ──────────────────────────────────────────────────────
