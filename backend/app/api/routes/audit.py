@@ -1,48 +1,74 @@
-"""Pydantic schemas for audit. Must match specs/openapi.yaml.
+"""Audit trail queries.
 
-Provides request/response schemas for the audit outbox pipeline.
+- ``POST /audit/record``     — record a new audit event (stored in AuditOutbox)
+- ``GET  /audit/{file_id}``  — return the chronological audit trail for a file
 
-- ``AuditEventCreate``    — validates incoming audit event data.
-- ``AuditEventResponse``  — serialises outbox rows for API responses and
-                            internal service returns.
-- ``AuditTrailResponse``  — a single entry in a file's chronological audit trail.
+Neither endpoint touches ChainService directly - that's the outbox worker's job.
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
+from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from pydantic import BaseModel, Field
+from app.db import get_db
+from app.deps import get_current_user
+from app.models.audit_outbox import AuditOutbox
+from app.models.user import User
+from app.schemas.audit import AuditEventCreate, AuditEventResponse, AuditTrailResponse
+from app.services import audit as audit_service
 
-
-class AuditEventCreate(BaseModel):
-    event_type: str = Field(..., min_length=1, max_length=64)
-    reference_id: str = Field(..., min_length=1, max_length=255)
-    actor: str = Field(..., min_length=1, max_length=255)
-    payload: dict[str, Any] | None = Field(default=None)
-
-
-class AuditEventResponse(BaseModel):
-    id: str
-    event_type: str
-    reference_id: str
-    actor: str
-    payload: dict[str, Any] | None = Field(default=None)
-    status: str
-    tx_hash: str | None = Field(default=None)
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
+router = APIRouter(prefix="/audit", tags=["audit"])
 
 
-class AuditTrailResponse(BaseModel):
-    event_type: str
-    reference_id: str
-    actor: str
-    status: str
-    tx_hash: str | None = Field(default=None)
-    created_at: datetime
+@router.post(
+    "/record",
+    response_model=AuditEventResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Record an audit event",
+)
+def record_audit_event(
+    body: AuditEventCreate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> AuditEventResponse:
+    response = audit_service.record_event(
+        db,
+        event_type=body.event_type,
+        reference_id=body.reference_id,
+        actor=body.actor,
+        payload=body.payload,
+    )
+    db.commit()
+    return response
 
-    model_config = {"from_attributes": True}
+
+@router.get(
+    "/{file_id}",
+    response_model=list[AuditTrailResponse],
+    summary="Get audit trail for a file",
+)
+def get_audit_trail(
+    file_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[AuditTrailResponse]:
+    stmt = (
+        select(AuditOutbox)
+        .where(AuditOutbox.reference_id == file_id)
+        .order_by(AuditOutbox.created_at)
+    )
+    rows = list(db.scalars(stmt))
+    return [
+        AuditTrailResponse(
+            event_type=row.event_type,
+            reference_id=row.reference_id,
+            actor=row.actor,
+            status=row.status,
+            tx_hash=row.tx_hash,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
