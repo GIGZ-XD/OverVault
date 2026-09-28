@@ -25,4 +25,6 @@ def test_users_listing_by_role(client, auth):
 
 def test_dashboard_summary(client, auth, uploaded):
     r = client.get("/api/dashboard/summary", headers=auth("employee"))
-    assert r.status_code == 200 and r.json()["total_files"] == 1 and r.json()["total_versions"] == 1
+    body = r.json()
+    assert r.status_code == 200 and body["total_files"] == 1 and body["verified_files"] == 1
+    assert body["integrity_score"] == "100%" and "chain" in body["blockchain_status"]

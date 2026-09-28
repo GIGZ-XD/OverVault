@@ -80,6 +80,18 @@ def add_version(db: Session, file: File, actor: User, data: bytes, comment: str 
     return version
 
 
+def current_version(db: Session, file: File) -> FileVersion | None:
+    """The FileVersion row for file.current_version, or None for a file with no
+    versions yet (should not happen - create_file always makes v1)."""
+    if file.current_version == 0:
+        return None
+    return db.scalar(
+        select(FileVersion).where(
+            FileVersion.file_id == file.id, FileVersion.version_number == file.current_version
+        )
+    )
+
+
 def get_version(db: Session, file: File, number: int) -> FileVersion:
     v = db.scalar(
         select(FileVersion).where(FileVersion.file_id == file.id, FileVersion.version_number == number)

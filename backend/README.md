@@ -32,4 +32,5 @@ and commit once, so the action and its outbox row share a transaction.
 | `routes/audit.py` | Sriganesh | `api/router.py` auto-includes it when present |
 | `auth/wallet_auth` (`nonce.issue_nonce`, `verify.verify_login`) | Pannaga | Routes coded to an **assumed** signature; return 501 until the module exists |
 | `signing_payloads.json` / signature format | Pannaga + Sriganesh | Optional `signature` accepted on grant / revoke / approve / reject and stored in audit metadata; **not verified** |
-| `specs/openapi.yaml` + fixtures | Vineeth (but scaffold copy unseen) | Diff against `make openapi` output; align field names with Pavan |
+| `specs/openapi.yaml` + fixtures | Vineeth (but scaffold copy unseen) | **Resolved to match Pavan's mock (ADR 0005)** - diff `make openapi` output against the frozen spec and update it |
+| Upload/download real integration | Pavan | Mock uses JSON; real backend needs multipart upload + blob download - see ADR 0005 |

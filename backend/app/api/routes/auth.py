@@ -38,7 +38,9 @@ def _wallet():
     """Pannaga's module (app/auth/wallet_auth). Imported lazily so the backend runs without it."""
     try:
         from app.auth.wallet_auth import nonce, verify
-    except ImportError:
+        if not hasattr(nonce, "issue_nonce") or not hasattr(verify, "verify_login"):
+            raise HTTPException(501, "Wallet auth module not installed yet.")
+    except (ImportError, HTTPException):
         raise HTTPException(501, "Wallet auth module not installed yet.")
     return nonce, verify
 

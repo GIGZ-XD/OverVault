@@ -1,5 +1,5 @@
 def prot(client, auth, fid, mode, by="employee"):
-    return client.patch(f"/api/files/{fid}/protection", headers=auth(by), json={"protection_mode": mode})
+    return client.put(f"/api/files/{fid}/protection", headers=auth(by), json={"protection": mode})
 
 
 def test_append_only_blocks_rollback_and_delete_but_allows_new_versions(client, auth, uploaded):

@@ -17,4 +17,4 @@ def test_dev_login_and_me(client):
 
 
 def test_wallet_routes_501_until_module_exists(client):
-    assert client.post("/api/auth/wallet/nonce", json={"address": "0xabc"}).status_code in (200, 501)
+    assert client.post("/api/auth/nonce", json={"address": "0xabc"}).status_code in (200, 501)

@@ -26,6 +26,15 @@ def test_new_version_history_and_rollback(client, auth, uploaded, audit_calls):
     assert [c["action"] for c in audit_calls][-2:] == ["version.created", "version.rollback"]
 
 
+def test_verify_endpoint_matches_mock_shape(client, auth, uploaded):
+    fid = uploaded["id"]
+    r = client.post(f"/api/files/{fid}/verify", headers=auth("employee"))
+    assert r.status_code == 200
+    body = r.json()
+    assert body["file_id"] == fid and body["verified"] is True
+    assert body["local_hash"] == body["chain_hash"] == uploaded["hash"]
+
+
 def test_empty_upload_rejected(client, auth):
     r = client.post("/api/files", headers=auth("employee"), files={"upload": ("e.txt", b"")})
     assert r.status_code == 422

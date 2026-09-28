@@ -6,7 +6,7 @@ from app.workers import expiry_job
 
 
 def grant(client, auth, fid, users, who="employee2", level="read", expires=None, by="employee"):
-    body = {"user_id": users[who].id, "level": level}
+    body = {"grantee": users[who].id, "permission": level}
     if expires:
         body["expires_at"] = expires.isoformat()
     return client.post(f"/api/files/{fid}/permissions", headers=auth(by), json=body)
@@ -15,7 +15,7 @@ def grant(client, auth, fid, users, who="employee2", level="read", expires=None,
 def test_grant_read_allows_download_not_write(client, auth, users, uploaded):
     fid = uploaded["id"]
     g = grant(client, auth, fid, users)
-    assert g.status_code == 201
+    assert g.status_code == 201 and g.json()["status"] == "active"
     assert client.get(f"/api/files/{fid}/download", headers=auth("employee2")).status_code == 200
     up = client.post(f"/api/files/{fid}/versions", headers=auth("employee2"), files={"upload": ("x", b"y")})
     assert up.status_code == 403
@@ -30,9 +30,9 @@ def test_only_managers_can_grant(client, auth, users, uploaded):
 def test_revoke_removes_access(client, auth, users, uploaded, audit_calls):
     fid = uploaded["id"]
     pid = grant(client, auth, fid, users).json()["id"]
-    assert client.post(f"/api/permissions/{pid}/revoke", headers=auth("employee")).status_code == 200
+    assert client.delete(f"/api/permissions/{pid}", headers=auth("employee")).status_code == 204
     assert client.get(f"/api/files/{fid}/download", headers=auth("employee2")).status_code == 403
-    assert client.post(f"/api/permissions/{pid}/revoke", headers=auth("employee")).status_code == 409
+    assert client.delete(f"/api/permissions/{pid}", headers=auth("employee")).status_code == 409
     assert "permission.revoked" in [c["action"] for c in audit_calls]
 
 
@@ -59,4 +59,4 @@ def test_regrant_updates_in_place(client, auth, users, uploaded):
     fid = uploaded["id"]
     a = grant(client, auth, fid, users, level="read").json()
     b = grant(client, auth, fid, users, level="write").json()
-    assert a["id"] == b["id"] and b["level"] == "write"
+    assert a["id"] == b["id"] and b["permission"] == "write"

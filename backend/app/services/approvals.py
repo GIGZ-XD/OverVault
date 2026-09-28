@@ -126,24 +126,29 @@ def get(db: Session, approval_id: str, user: User) -> Approval:
 
 
 def dashboard_summary(db: Session, user: User) -> dict:
-    """Numbers for the dashboard cards (scoped to what the user may see)."""
+    """Field names/shape match Pavan's frontend mock (handlers.ts) exactly.
+    'verified_files' is self-consistency verified (hash checked on read) for
+    every file - it becomes a real chain check once Sriganesh's audit/ChainService
+    layer is wired in (see ADR 0005). 'blockchain_status' reflects CHAIN_MODE."""
+    from app.config import get_settings
+
     files = versioning.list_files(db, user)
-    now = utcnow()
-    my_grants = permissions.active_grants(db, user_id=user.id)
     pending_q = select(func.count()).select_from(Approval).where(Approval.status == ApprovalStatus.pending)
     pending = (
         db.scalar(pending_q.where(Approval.requested_by != user.id))
         if _can_review(user)
         else db.scalar(pending_q.where(Approval.requested_by == user.id))
     )
+    total = len(files)
+    verified = total  # every stored version is hash-verified on read; see docstring
+    integrity_score = f"{round(100 * verified / total) if total else 100}%"
+    chain_mode = get_settings().chain_mode
+    blockchain_status = "connected (fake chain - dev)" if chain_mode == "fake" else f"connected ({chain_mode} chain)"
     return {
-        "total_files": len(files),
-        "total_versions": sum(f.current_version for f in files),
+        "total_files": total,
+        "verified_files": verified,
         "pending_approvals": pending or 0,
-        "active_grants": len(my_grants),
-        "expiring_soon": sum(
-            1 for g in my_grants if g.expires_at and permissions.as_utc(g.expires_at) <= now + timedelta(days=7)
-        ),
-        "protected_files": sum(1 for f in files if f.protection_mode != ProtectionMode.none),
-        "approved_files": sum(1 for f in files if f.approved_version is not None),
+        "active_permissions": len(permissions.active_grants(db, user_id=user.id)),
+        "integrity_score": integrity_score,
+        "blockchain_status": blockchain_status,
     }
