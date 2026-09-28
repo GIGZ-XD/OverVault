@@ -53,15 +53,46 @@ declare global {
  * Returns the BridgeKey EIP-1193 provider if installed, null otherwise.
  * Safe to call during SSR (returns null when window is undefined).
  */
-function getProvider(): EIP1193Provider | null {
-  if (typeof window === "undefined") return null;
-  const p = window.ethereum;
+type ProviderState = "server" | "unavailable" | "bridgekey" | "other";
+
+function detectProvider(): {
+  state: ProviderState;
+  provider: EIP1193Provider | null;
+} {
+  if (typeof window === "undefined") {
+    if (process.env.NODE_ENV === "development") {
+      console.debug("[BridgeKey] provider detection", {
+        hasWindow: false,
+        hasEthereum: false,
+        isBridgeKey: undefined,
+      });
+    }
+    return { state: "server", provider: null };
+  }
+
+  const provider = window.ethereum;
+  if (process.env.NODE_ENV === "development") {
+    console.debug("[BridgeKey] provider detection", {
+      hasWindow: true,
+      hasEthereum: Boolean(provider),
+      isBridgeKey: provider?.isBridgeKey,
+    });
+  }
+  if (!provider) {
+    return { state: "unavailable", provider: null };
+  }
+
   // BridgeKey is identified by isBridgeKey=true on the injected provider.
-  // If another wallet (MetaMask etc.) is also installed and takes window.ethereum,
-  // the providers[] array (EIP-6963) may be needed — but confirmed probe showed
-  // BridgeKey sets isBridgeKey=true on window.ethereum directly.
-  if (p && p.isBridgeKey === true) return p;
-  return null;
+  // If another wallet takes window.ethereum, it is present but not BridgeKey.
+  if (provider.isBridgeKey === true) {
+    return { state: "bridgekey", provider };
+  }
+
+  return { state: "other", provider: null };
+}
+
+function getProvider(): EIP1193Provider | null {
+  return detectProvider().provider;
 }
 
 // ─── Error classifier ────────────────────────────────────────────────────────
@@ -123,7 +154,7 @@ export const bridgekeyAdapter: WalletAdapter = {
   // ── isInstalled ────────────────────────────────────────────────────────────
   // BK-2: Detect installation via window.ethereum.isBridgeKey === true
   isInstalled(): boolean {
-    return getProvider() !== null;
+    return detectProvider().state === "bridgekey";
   },
 
   // ── connect ────────────────────────────────────────────────────────────────

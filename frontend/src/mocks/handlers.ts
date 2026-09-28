@@ -9,6 +9,7 @@
  * fixed signature to unblock frontend development.
  */
 import { http, HttpResponse } from "msw";
+import audit from "../../../specs/fixtures/audit.json";
 import files from "../../../specs/fixtures/files.json";
 import users from "../../../specs/fixtures/users.json";
 
@@ -103,5 +104,8 @@ export const handlers = [
   }),
 
   // ── Files ─────────────────────────────────────────────────────────────────
-  http.get("*/files", () => HttpResponse.json(files)),
+  http.get("http://localhost:8000/files", () => HttpResponse.json(files)),
+
+  // ── Audit ─────────────────────────────────────────────────────────────────
+  http.get("http://localhost:8000/audit", () => HttpResponse.json(audit)),
 ];

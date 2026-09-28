@@ -20,6 +20,7 @@ import {
   type LoginErrorCode,
   LoginError,
 } from "@/lib/auth/wallet-login";
+import { config } from "@/lib/config";
 import { wallet } from "@/lib/wallet";
 
 // ---------------------------------------------------------------------------
@@ -172,13 +173,37 @@ export default function LoginPage() {
   const router = useRouter();
   const [loginState, setLoginState] = useState<LoginState>("idle");
   const [error, setError] = useState<ErrorState | null>(null);
-  const isInstalled = wallet.isInstalled();
+  const [isInstalled, setIsInstalled] = useState<boolean | null>(null);
 
-  // If already authenticated, go to dashboard
   useEffect(() => {
+    const refreshWalletState = () => {
+      const installed = wallet.isInstalled();
+      setIsInstalled(installed);
+      if (installed) {
+        setError((currentError) =>
+          currentError?.code === "wallet_not_installed" ? null : currentError
+        );
+      }
+    };
+
+    refreshWalletState();
+    window.addEventListener("load", refreshWalletState);
+    window.addEventListener("focus", refreshWalletState);
+    window.addEventListener("pageshow", refreshWalletState);
+    window.addEventListener("ethereum#initialized", refreshWalletState);
+    document.addEventListener("visibilitychange", refreshWalletState);
+
     if (hasSession()) {
       router.replace("/dashboard");
     }
+
+    return () => {
+      window.removeEventListener("load", refreshWalletState);
+      window.removeEventListener("focus", refreshWalletState);
+      window.removeEventListener("pageshow", refreshWalletState);
+      window.removeEventListener("ethereum#initialized", refreshWalletState);
+      document.removeEventListener("visibilitychange", refreshWalletState);
+    };
   }, [router]);
 
   const handleConnect = async () => {
@@ -242,8 +267,23 @@ export default function LoginPage() {
           </div>
         </div>
 
-        {/* Wallet-not-installed notice */}
-        {!isInstalled && (
+        {/* Wallet detection status */}
+        {isInstalled === null && (
+          <div
+            className="rounded-md px-4 py-3 mb-5 text-sm"
+            style={{
+              background: "var(--accent-soft)",
+              color: "var(--accent)",
+              border: "1px solid var(--accent)",
+            }}
+            role="status"
+            aria-live="polite"
+          >
+            Checking BridgeKey Wallet availability…
+          </div>
+        )}
+
+        {isInstalled === false && (
           <div
             className="rounded-md px-4 py-3 mb-5 text-sm"
             style={{
@@ -347,7 +387,7 @@ export default function LoginPage() {
             style={{ color: "var(--text-muted)" }}
           >
             wallet:{" "}
-            {process.env.NEXT_PUBLIC_WALLET_MODE ?? "mock"} · api:{" "}
+            {config.walletMode} · api:{" "}
             {process.env.NEXT_PUBLIC_API_MODE ?? "mock"}
           </p>
         )}
