@@ -106,11 +106,30 @@ async function getBlob(
   };
 }
 
-export const api = {
-  get: getJson,
-  post: postJson,
-  put: putJson,
-  delete: del,
-  postForm,
-  getBlob,
-};
+export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+  const method = options.method?.toUpperCase() || "GET";
+  if (method === "GET") return getJson<T>(path);
+  if (method === "POST") {
+    if (options.body instanceof FormData) return postForm<T>(path, options.body);
+    const body = options.body ? (typeof options.body === "string" ? JSON.parse(options.body) : options.body) : undefined;
+    return postJson<T>(path, body);
+  }
+  if (method === "PUT") {
+    const body = options.body ? (typeof options.body === "string" ? JSON.parse(options.body) : options.body) : undefined;
+    return putJson<T>(path, body);
+  }
+  if (method === "DELETE") {
+    return del<T>(path);
+  }
+  return fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: authHeaders(options.headers as Record<string, string>),
+  }).then(asJson<T>);
+}
+
+api.get = getJson;
+api.post = postJson;
+api.put = putJson;
+api.delete = del;
+api.postForm = postForm;
+api.getBlob = getBlob;

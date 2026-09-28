@@ -37,3 +37,8 @@ test-results/
 # Local data
 /data/
 *.log
+frontend/temp/
+temp/
+*.tsbuildinfo
+npm-debug.log*
+.vercel
