@@ -1,0 +1,10 @@
+[
+  {
+    "id": "p1",
+    "file_id": "f1",
+    "grantee": "u2",
+    "permission": "read",
+    "expires_at": "2026-12-31T00:00:00Z",
+    "status": "active"
+  }
+]

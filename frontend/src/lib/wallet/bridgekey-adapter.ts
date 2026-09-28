@@ -1,4 +1,4 @@
-import type { WalletAdapter } from "./adapter";
+import type { WalletAdapter } from "@/lib/wallet/adapter";
 
 // Real BridgeKey implementation (Pannaga).
 export const bridgekeyAdapter: WalletAdapter = {

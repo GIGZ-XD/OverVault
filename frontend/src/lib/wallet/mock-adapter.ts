@@ -1,4 +1,4 @@
-import type { WalletAdapter } from "./adapter";
+import type { WalletAdapter } from "@/lib/wallet/adapter";
 
 export const mockAdapter: WalletAdapter = {
   isInstalled: () => true,

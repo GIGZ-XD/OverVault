@@ -1,0 +1,22 @@
+[
+  {
+    "id": "f1",
+    "name": "Q3-contract.pdf",
+    "owner": "u1",
+    "size": 482113,
+    "protection": "read-only",
+    "verification": "verified",
+    "hash": "0x9f3a11c21e",
+    "ownership_tx": "0xtx1"
+  },
+  {
+    "id": "f2",
+    "name": "policy-draft.docx",
+    "owner": "u1",
+    "size": 90211,
+    "protection": "none",
+    "verification": "pending",
+    "hash": "0x77b2aa01ff",
+    "ownership_tx": null
+  }
+]

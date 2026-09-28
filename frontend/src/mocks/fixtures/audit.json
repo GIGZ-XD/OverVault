@@ -1,0 +1,11 @@
+[
+  {
+    "id": "e1",
+    "event_type": "ownership_register",
+    "file_id": "f1",
+    "actor": "0xaaa1",
+    "tx_hash": "0xtx1",
+    "verification": "verified",
+    "timestamp": 1788000000
+  }
+]
