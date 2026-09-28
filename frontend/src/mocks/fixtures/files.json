@@ -7,7 +7,7 @@
     "protection": "read-only",
     "verification": "verified",
     "hash": "0x9f3a11c21e",
-    "ownership_tx": "0xtx1"
+    "ownership_tx": "0x88f2ab1c9902"
   },
   {
     "id": "f2",
@@ -18,5 +18,45 @@
     "verification": "pending",
     "hash": "0x77b2aa01ff",
     "ownership_tx": null
+  },
+  {
+    "id": "f3",
+    "name": "q4-board-minutes.pdf",
+    "owner": "u3",
+    "size": 1240950,
+    "protection": "append-only",
+    "verification": "verified",
+    "hash": "0x3e18fba9002",
+    "ownership_tx": "0x3a992ff12019"
+  },
+  {
+    "id": "f4",
+    "name": "treasury-allocation-2026.xlsx",
+    "owner": "u2",
+    "size": 2840192,
+    "protection": "read-only",
+    "verification": "verified",
+    "hash": "0x4b78ca90123",
+    "ownership_tx": "0x778811fe0901"
+  },
+  {
+    "id": "f5",
+    "name": "kyc-aml-compliance-manual.pdf",
+    "owner": "u4",
+    "size": 5410920,
+    "protection": "read-only",
+    "verification": "verified",
+    "hash": "0x89ab11c34ef",
+    "ownership_tx": "0x223344aa55bb"
+  },
+  {
+    "id": "f6",
+    "name": "infrastructure-keys-rotation.md",
+    "owner": "u3",
+    "size": 34102,
+    "protection": "none",
+    "verification": "tampered",
+    "hash": "0xfa7701bc992",
+    "ownership_tx": "0x112233445566"
   }
 ]

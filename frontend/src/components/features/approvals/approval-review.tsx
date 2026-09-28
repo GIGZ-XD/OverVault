@@ -84,7 +84,7 @@ export function ApprovalReviewModal({
     >
       <div className="space-y-5">
         {/* Request Header Info */}
-        <div className="p-4 rounded-xl border border-hairline bg-surface-2/40 flex items-center justify-between">
+        <div className="p-4 rounded-xl border border-hairline bg-parchment flex items-center justify-between">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-accent" />

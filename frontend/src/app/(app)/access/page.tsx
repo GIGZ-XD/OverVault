@@ -86,7 +86,7 @@ export default function AccessPage() {
       {/* Users Directory Quick Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {users.map((u) => (
-          <Card key={u.id} className="bg-surface-2/40">
+          <Card key={u.id} className="bg-parchment">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center font-bold text-sm font-mono border border-accent/20">
                 {u.id.toUpperCase()}
