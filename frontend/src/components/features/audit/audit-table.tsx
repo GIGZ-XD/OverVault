@@ -84,15 +84,15 @@ export default function AuditTable({ events, isLoading = false, isError = false 
               </td>
               <td className="px-4 py-4 font-mono text-xs">{event.file_id}</td>
               <td className="whitespace-nowrap px-4 py-4 text-xs" style={{ color: "var(--text-muted)" }}>
-                {formatTimestamp(event.timestamp)}
+                {formatTimestamp(event.timestamp ?? Date.parse(event.created_at ?? "") / 1000)}
               </td>
               <td className="px-4 py-4">
                 <span
                   className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium"
-                  style={{ background: "var(--surface-2)", color: verificationColor[event.verification] }}
+                  style={{ background: "var(--surface-2)", color: verificationColor[event.verification ?? "pending"] }}
                 >
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: verificationColor[event.verification] }} />
-                  {verificationLabel[event.verification]}
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: verificationColor[event.verification ?? "pending"] }} />
+                  {verificationLabel[event.verification ?? "pending"]}
                 </span>
               </td>
               <td className="px-4 py-4">

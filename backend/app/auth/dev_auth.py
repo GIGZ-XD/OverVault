@@ -1,18 +1,50 @@
-"""AUTH_MODE=dev: issue a JWT for a chosen test user.
+"""Dev-only login (AUTH_MODE=dev). Bypasses wallet auth entirely.
 
-This bypasses wallet authentication entirely.
-Only active when AUTH_MODE=dev (never reachable in wallet mode).
+SEED_USERS' first four rows (ids u1-u4) are the team's SHARED fixture identity
+set: the same ids/names/roles/wallet addresses Pannaga's wallet_auth/verify.py
+placeholder lookup used, and that Pavan's mocks/fixtures (users.json) use.
+Dev-login and wallet-login now resolve to the SAME accounts. u5 is Vineeth's
+own addition - a second employee with no wallet, needed to test permission
+grants between two peers; it's not part of the shared team fixture.
+
+DevLoginRequest.user_id (not email) per the frozen schemas/auth.py.
 """
-from __future__ import annotations
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-_DEV_USERS: dict[str, dict] = {
-    "u1": {"user_id": "u1", "role": "employee", "address": "0xaaa1"},
-    "u2": {"user_id": "u2", "role": "manager",  "address": "0xbbb2"},
-    "u3": {"user_id": "u3", "role": "admin",    "address": "0xccc3"},
-    "u4": {"user_id": "u4", "role": "auditor",  "address": "0xddd4"},
-}
+from app.config import get_settings
+from app.models.user import Role, User
+from app.services.rbac import Forbidden, NotFound
+
+SEED_USERS = [
+    # id,   name,              role,          wallet_address
+    ("u1", "Asha Rao", Role.employee, "0xaaa1"),
+    ("u2", "Ravi Kumar", Role.manager, "0xbbb2"),
+    ("u3", "Meera Iyer", Role.admin, "0xccc3"),
+    ("u4", "Kiran Shah", Role.auditor, "0xddd4"),
+    ("u5", "Priya Nair", Role.employee, None),  # Vineeth's addition - see module docstring
+]
 
 
-def get_dev_user(user_id: str) -> dict | None:
-    """Return the test user dict or None if not found."""
-    return _DEV_USERS.get(user_id)
+def seed_dev_users(db: Session) -> None:
+    for user_id, name, role, wallet_address in SEED_USERS:
+        if db.get(User, user_id) is None:
+            db.add(
+                User(
+                    id=user_id,
+                    email=f"{user_id}@overvault.dev",
+                    name=name,
+                    role=role,
+                    wallet_address=wallet_address,
+                )
+            )
+    db.commit()
+
+
+def dev_login(db: Session, user_id: str) -> User:
+    if get_settings().auth_mode != "dev":
+        raise Forbidden("Dev login is disabled.")
+    user = db.get(User, user_id)
+    if user is None or not user.is_active:
+        raise NotFound("No such dev user.")
+    return user

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import AuditFilters from "@/components/features/audit/audit-filters";
 import AuditTable from "@/components/features/audit/audit-table";
-import { useAudit } from "@/lib/api/hooks/use-audit";
+import { useAudit } from "@/lib/api/hooks/useAudit";
 
 export default function Page() {
   const { data: events = [], isLoading, isError } = useAudit();
@@ -22,7 +22,7 @@ export default function Page() {
       const matchesQuery =
         !normalizedQuery ||
         event.actor.toLowerCase().includes(normalizedQuery) ||
-        event.file_id.toLowerCase().includes(normalizedQuery) ||
+        event.file_id?.toLowerCase().includes(normalizedQuery) ||
         event.event_type.toLowerCase().includes(normalizedQuery);
       const matchesVerification = verification === "all" || event.verification === verification;
       const matchesAction = action === "all" || event.event_type === action;

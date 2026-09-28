@@ -1,101 +1,98 @@
 """Auth routes: dev-login, nonce, wallet-login.
 
 Ownership:
-  - /auth/nonce and /auth/wallet-login → Pannaga (wallet_auth)
-  - /auth/dev-login → Pannaga (dev_auth scaffold) / Vineeth (JWT issuance)
-  - JWT creation → Vineeth (app/auth/jwt.py)
+  - /auth/nonce and /auth/wallet-login -> Pannaga (wallet_auth), wired to
+    Vineeth's DB via the injected user_lookup (app/auth/user_lookup.py).
+  - /auth/dev-login -> Vineeth, using Pannaga's shared fixture ids (u1-u4).
+  - JWT creation -> Vineeth (app/auth/jwt.py).
 
-The routes call wallet_auth functions and return the verified identity.
-Vineeth's JWT layer sits between verify_wallet_login() and the token response.
+Error response shape ({"detail": {"code": ..., "message": ...}}) matches
+Pannaga's delivered route exactly, per wallet_auth.md section 5's per-code
+error table. This differs from the flat {"detail": str, "code": str} shape
+the rest of the app's DomainError handler uses - flagged for the team to
+reconcile into one convention later; not changed here since it's her
+delivered, spec-matching design for these two endpoints specifically.
 """
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 
+from app.auth import dev_auth
+from app.auth.jwt import create_access_token
+from app.auth.user_lookup import db_wallet_lookup
 from app.auth.wallet_auth import (
+    AddressNotFoundError,
+    InvalidSignatureError,
+    NonceExpiredError,
     create_nonce,
     verify_wallet_login,
-    NonceExpiredError,
-    InvalidSignatureError,
-    AddressNotFoundError,
 )
-from app.auth.dev_auth import get_dev_user
+from app.db import get_db
+from app.deps import get_current_user
+from app.models.user import User
 from app.schemas.auth import (
+    DevLoginRequest,
     NonceRequest,
     NonceResponse,
-    WalletLoginRequest,
     TokenResponse,
-    DevLoginRequest,
+    UserOut,
+    WalletLoginRequest,
 )
-from app.config import settings
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/auth/nonce", response_model=NonceResponse, tags=["auth"])
-async def request_nonce(body: NonceRequest) -> NonceResponse:
-    """Issue a one-time nonce for the given wallet address.
+def _token(user: User) -> TokenResponse:
+    return TokenResponse(access_token=create_access_token(user), user=UserOut.model_validate(user))
 
-    The client must pass ``message`` verbatim to ``wallet.signMessage()``.
-    Nonce expires in 5 minutes.
-    """
+
+@router.post("/nonce", response_model=NonceResponse)
+def request_nonce(body: NonceRequest) -> NonceResponse:
+    """Issue a one-time nonce for the given wallet address. Client passes
+    `message` verbatim to wallet.signMessage(). Expires in 5 minutes."""
     result = create_nonce(body.address)
     return NonceResponse(nonce=result["nonce"], message=result["message"])
 
 
-@router.post("/auth/wallet-login", response_model=TokenResponse, tags=["auth"])
-async def wallet_login(body: WalletLoginRequest) -> TokenResponse:
-    """Verify a wallet signature and issue a JWT.
-
-    1. Recovers the signer from the EIP-191 signature.
-    2. Validates the address matches the stored nonce.
-    3. Links address to user identity.
-    4. Returns a JWT (TODO: Vineeth implements JWT creation in app/auth/jwt.py).
-    """
+@router.post("/wallet-login", response_model=TokenResponse)
+def wallet_login(body: WalletLoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    """Verify a wallet signature and issue a JWT. No auto-provisioning: an
+    unregistered address is a 403 (wallet_auth.md section 9)."""
     try:
         identity = verify_wallet_login(
             address=body.address,
             signature=body.signature,
+            user_lookup=db_wallet_lookup(db),  # real DB lookup, not her placeholder fixture
         )
     except NonceExpiredError as exc:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "nonce_expired", "message": str(exc)},
+            status_code=status.HTTP_401_UNAUTHORIZED, detail={"code": "nonce_expired", "message": str(exc)}
         ) from exc
     except InvalidSignatureError as exc:
         raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail={"code": "invalid_signature", "message": str(exc)},
+            status_code=status.HTTP_401_UNAUTHORIZED, detail={"code": "invalid_signature", "message": str(exc)}
         ) from exc
     except AddressNotFoundError as exc:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "address_not_found", "message": str(exc)},
+            status_code=status.HTTP_403_FORBIDDEN, detail={"code": "address_not_found", "message": str(exc)}
         ) from exc
 
-    # TODO (Vineeth): replace the placeholder below with a real JWT from app/auth/jwt.py
-    # Expected call: token = create_jwt(sub=identity.user_id, wallet=identity.address, role=identity.role)
-    placeholder_token = f"placeholder.jwt.for.{identity.user_id}"
-    return TokenResponse(access_token=placeholder_token)
-
-
-@router.post("/auth/dev-login", response_model=TokenResponse, tags=["auth"])
-async def dev_login(body: DevLoginRequest) -> TokenResponse:
-    """AUTH_MODE=dev only — skip wallet, get token for a test user.
-
-    Returns 403 in wallet mode.
-    """
-    if settings.auth_mode != "dev":
+    user = db.get(User, identity.user_id)
+    if user is None or not user.is_active:  # lookup succeeded but the row vanished/deactivated mid-request
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={"code": "dev_login_disabled", "message": "AUTH_MODE is not dev"},
+            detail={"code": "address_not_found", "message": "Linked user is no longer active."},
         )
-    user = get_dev_user(body.user_id)
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail={"code": "user_not_found", "message": f"No dev user {body.user_id}"},
-        )
-    # TODO (Vineeth): replace placeholder with real JWT
-    placeholder_token = f"placeholder.jwt.for.{user['user_id']}"
-    return TokenResponse(access_token=placeholder_token)
+    return _token(user)
+
+
+@router.post("/dev-login", response_model=TokenResponse)
+def dev_login(body: DevLoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    """AUTH_MODE=dev only - skip wallet, get a token for a seeded test user by id."""
+    return _token(dev_auth.dev_login(db, body.user_id))
+
+
+@router.get("/me", response_model=UserOut)
+def me(user: User = Depends(get_current_user)):
+    return user

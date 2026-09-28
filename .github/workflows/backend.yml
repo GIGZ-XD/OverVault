@@ -1,15 +1,46 @@
 name: backend
+
 on:
-  push: { paths: ["backend/**", "specs/**"] }
-  pull_request: { paths: ["backend/**", "specs/**"] }
+  pull_request:
+    branches: [main]
+    paths: ["backend/**", "specs/**", ".github/workflows/backend.yml"]
+  push:
+    branches: [main]
+    paths: ["backend/**", "specs/**", ".github/workflows/backend.yml"]
+
 jobs:
   test:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: test
+      CHAIN_MODE: fake          # CI never talks to MST Testnet
+      DATABASE_URL: sqlite:///./ci.db
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-python@v5
-        with: { python-version: "3.12" }
-      - run: pip install -r backend/requirements.txt -r backend/requirements-dev.txt
-      - run: diff specs/chain_service.py backend/app/chain/base.py
-      - run: cd backend && ruff check .
-      - run: cd backend && pytest -q
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+
+      - name: Install
+        run: pip install -r requirements-dev.txt
+
+      - name: Tests
+        run: python -m pytest
+
+      - name: Migrations apply, roll back and re-apply
+        run: |
+          alembic upgrade head
+          alembic downgrade base
+          alembic upgrade head
+
+      - name: Models and migrations are in sync
+        run: alembic check    # fails if a model changed without a new migration
+
+      - name: Docker image builds
+        run: docker build -t overvault-backend .

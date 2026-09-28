@@ -1,29 +1,44 @@
-# CLAUDE.md (instructions for Claude Code, backend track)
+# CLAUDE.md - working agreement for OverVault
 
-## Project
-OverVault: FastAPI backend for private encrypted document storage. MST Blockchain is a
-verification layer only. **Private files never go on chain, only hashes and references.**
+Read this before changing anything. It applies to Claude Code and to every teammate's AI assistant.
 
-## Stack
-Python 3.12, FastAPI, SQLAlchemy + Alembic, Postgres, S3-compatible storage (MinIO in dev),
-`hashlib` SHA-256, `cryptography` for file encryption, pytest.
+## Frozen decisions
+The tech stack and the folder structure in `STRUCTURE.md` are FROZEN. Do not silently change or
+substitute them. Improvements go under a separate "Optional Future Improvements" heading, never
+into the code. Frozen contracts (`specs/openapi.yaml`, `specs/fixtures/`, `specs/chain_service.py`,
+`specs/wallet_auth.md`, `specs/signing_payloads.json`) change only in ONE PR that updates the spec,
+the fixtures and every consumer, reviewed by the owners on both sides.
 
-## Layout
-- `backend/app/api/routes/`   HTTP routes (thin, no business logic)
-- `backend/app/services/`     business logic
-- `backend/app/models/`       SQLAlchemy models
-- `backend/app/chain/`        ChainService (fake + real). `base.py` must match `specs/chain_service.py`
-- `backend/app/workers/`      outbox worker, expiry job
-- `backend/tests/`            pytest, mirror the app layout
+## Who owns what
+Vineeth: backend core, `frontend/src/lib/api`, `specs/`, `.github/`, root tooling, `docs/adr/`.
+Sriganesh: `contracts/`, `backend/app/chain/`, audit + outbox. Pannaga: wallet, signing modal, audit UI,
+`e2e/`, `docs/`. Pavan: frontend shell, UI primitives, pages, MSW mocks.
+When a person says "I am <name>", stay inside their zone. Mention, but do NOT implement, any change
+outside it (see `.github/CODEOWNERS` for the exact paths).
 
-## Rules
-1. Do not edit `specs/` without a note in the PR description and tagging owners.
-2. Every state-changing action writes an `audit_outbox` row. Chain writes happen only in the worker.
-3. Hash (SHA-256) every file version on upload and verify on read.
-4. Default modes: `AUTH_MODE=dev`, `CHAIN_MODE=fake`. Code must work in both modes.
-5. Never commit secrets. Use `.env` and testnet-only keys.
-6. Write pytest tests alongside every module. Run `make test-backend` before finishing a task.
-7. Task format: goal, files to touch, acceptance test. One task per branch.
+## Layer rules
+* Routes (`backend/app/api`) receive HTTP, validate with schemas, call services. No business logic.
+* Services hold business logic and coordinate models, storage, permissions and the audit outbox.
+  They NEVER call the chain directly. They call `audit.record(...)` and commit ONCE at the end of the
+  action so the action and its outbox row share a transaction. `audit.record` itself must not commit.
+* Models store data only. Schemas must match `specs/openapi.yaml`.
+* Chain is reached only through `ChainService` (`backend/app/chain/base.py`). Fake chain is the
+  default for dev and tests.
+* No blockchain write ever happens inside a request. Private files never go on-chain: only hashes
+  and references.
+* Domain errors (`NotFound`, `Forbidden`, `Conflict`, `Invalid`, `IntegrityViolation`) live in
+  `services/rbac.py`; `main.py` maps them to HTTP responses.
 
-## Commands
-- `make up`, `make backend`, `make test-backend`, `make spec-check`
+## Backend commands (run from repo root)
+    make install     # pip install backend requirements
+    make run         # uvicorn on :8000, docs at /docs
+    make test        # pytest (uses fake chain + in-memory SQLite; no wallet/UI needed)
+    make migrate     # alembic upgrade head
+    make openapi     # dump live schema to specs/openapi.generated.yaml for diffing
+
+After changing a model: `cd backend && alembic revision --autogenerate -m "..."`, review the file,
+and keep `alembic check` green (CI runs it).
+
+## Git
+Never commit to `main`. Branch `feature/<name>-...`, small PRs, rebase before opening, commit
+messages `type: summary`. Never commit `.env`, private keys or seed phrases; only `.env.example`.

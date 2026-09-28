@@ -1,0 +1,1262 @@
+openapi: 3.1.0
+info:
+  title: OverVault API
+  version: 0.1.0
+paths:
+  /api/health:
+    get:
+      tags:
+      - health
+      summary: Health
+      operationId: health_api_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/auth/dev-login:
+    post:
+      tags:
+      - auth
+      summary: Dev Login
+      operationId: dev_login_api_auth_dev_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DevLoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/auth/me:
+    get:
+      tags:
+      - auth
+      summary: Me
+      operationId: me_api_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+      security:
+      - HTTPBearer: []
+  /api/auth/nonce:
+    post:
+      tags:
+      - auth
+      summary: Wallet Nonce
+      operationId: wallet_nonce_api_auth_nonce_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WalletNonceRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletNonceResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/auth/wallet-login:
+    post:
+      tags:
+      - auth
+      summary: Wallet Verify
+      operationId: wallet_verify_api_auth_wallet_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WalletVerifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/users:
+    get:
+      tags:
+      - users
+      summary: List Users
+      operationId: list_users_api_users_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/UserOut'
+                type: array
+                title: Response List Users Api Users Get
+      security:
+      - HTTPBearer: []
+  /api/users/{user_id}:
+    get:
+      tags:
+      - users
+      summary: Get User
+      operationId: get_user_api_users__user_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/files:
+    get:
+      tags:
+      - files
+      summary: List Files
+      operationId: list_files_api_files_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                items:
+                  $ref: '#/components/schemas/FileOut'
+                type: array
+                title: Response List Files Api Files Get
+      security:
+      - HTTPBearer: []
+    post:
+      tags:
+      - files
+      summary: Upload File
+      operationId: upload_file_api_files_post
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_upload_file_api_files_post'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - HTTPBearer: []
+  /api/files/{file_id}:
+    get:
+      tags:
+      - files
+      summary: Get File
+      operationId: get_file_api_files__file_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    delete:
+      tags:
+      - files
+      summary: Delete File
+      operationId: delete_file_api_files__file_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/files/{file_id}/download:
+    get:
+      tags:
+      - files
+      summary: Download Current
+      operationId: download_current_api_files__file_id__download_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/files/{file_id}/verify:
+    post:
+      tags:
+      - files
+      summary: Verify File
+      description: 'Matches the mock''s POST /files/:id/verify. Recomputes and compares
+        the
+
+        local hash on every call; chain_hash mirrors it until Sriganesh''s ChainService
+
+        is wired in (see ADR 0005) - at that point chain_hash comes from MSTScan and
+
+        `verified` reflects an actual on-chain comparison.'
+      operationId: verify_file_api_files__file_id__verify_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyResult'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/files/{file_id}/protection:
+    put:
+      tags:
+      - files
+      summary: Set Protection
+      operationId: set_protection_api_files__file_id__protection_put
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProtectionUpdate'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FileOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/files/{file_id}/versions:
+    get:
+      tags:
+      - versions
+      summary: List Versions
+      operationId: list_versions_api_files__file_id__versions_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VersionOut'
+                title: Response List Versions Api Files  File Id  Versions Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - versions
+      summary: Upload Version
+      operationId: upload_version_api_files__file_id__versions_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_upload_version_api_files__file_id__versions_post'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/files/{file_id}/versions/{number}/download:
+    get:
+      tags:
+      - versions
+      summary: Download Version
+      operationId: download_version_api_files__file_id__versions__number__download_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      - name: number
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Number
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/files/{file_id}/versions/{number}/rollback:
+    post:
+      tags:
+      - versions
+      summary: Rollback
+      operationId: rollback_api_files__file_id__versions__number__rollback_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      - name: number
+        in: path
+        required: true
+        schema:
+          type: integer
+          title: Number
+      requestBody:
+        content:
+          application/json:
+            schema:
+              anyOf:
+              - $ref: '#/components/schemas/RollbackRequest'
+              - type: 'null'
+              title: Body
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/files/{file_id}/permissions:
+    get:
+      tags:
+      - permissions
+      summary: List Permissions
+      operationId: list_permissions_api_files__file_id__permissions_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      - name: include_inactive
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Include Inactive
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PermissionOut'
+                title: Response List Permissions Api Files  File Id  Permissions Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    post:
+      tags:
+      - permissions
+      summary: Grant Permission
+      operationId: grant_permission_api_files__file_id__permissions_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: file_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: File Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GrantRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PermissionOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/permissions/{permission_id}:
+    delete:
+      tags:
+      - permissions
+      summary: Revoke Permission
+      operationId: revoke_permission_api_permissions__permission_id__delete
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: permission_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Permission Id
+      responses:
+        '204':
+          description: Successful Response
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/approvals:
+    post:
+      tags:
+      - approvals
+      summary: Submit Approval
+      operationId: submit_approval_api_approvals_post
+      security:
+      - HTTPBearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalSubmit'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - approvals
+      summary: List Approvals
+      operationId: list_approvals_api_approvals_get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: scope
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Scope
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - $ref: '#/components/schemas/ApprovalStatus'
+          - type: 'null'
+          title: Status
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApprovalOut'
+                title: Response List Approvals Api Approvals Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/approvals/{approval_id}:
+    get:
+      tags:
+      - approvals
+      summary: Get Approval
+      operationId: get_approval_api_approvals__approval_id__get
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: approval_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Approval Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/approvals/{approval_id}/decision:
+    post:
+      tags:
+      - approvals
+      summary: Decide Approval
+      operationId: decide_approval_api_approvals__approval_id__decision_post
+      security:
+      - HTTPBearer: []
+      parameters:
+      - name: approval_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Approval Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalDecisionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApprovalOut'
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/dashboard/summary:
+    get:
+      tags:
+      - dashboard
+      summary: Summary
+      operationId: summary_api_dashboard_summary_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummary'
+      security:
+      - HTTPBearer: []
+components:
+  schemas:
+    ApprovalDecisionRequest:
+      properties:
+        decision:
+          type: string
+          enum:
+          - approved
+          - rejected
+          title: Decision
+        comment:
+          type: string
+          title: Comment
+          default: ''
+        signature:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Signature
+      type: object
+      required:
+      - decision
+      title: ApprovalDecisionRequest
+      description: Matches POST /approvals/{id}/decision in the mock (one endpoint,
+        not two).
+    ApprovalOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        file_id:
+          type: string
+          title: File Id
+        version_number:
+          type: integer
+          title: Version Number
+        submitted_by:
+          type: string
+          title: Submitted By
+        reviewer_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reviewer Id
+        status:
+          $ref: '#/components/schemas/ApprovalStatus'
+        comment:
+          type: string
+          title: Comment
+        request_comment:
+          type: string
+          title: Request Comment
+        decision_comment:
+          type: string
+          title: Decision Comment
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        decided_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Decided At
+      type: object
+      required:
+      - id
+      - file_id
+      - version_number
+      - submitted_by
+      - status
+      - comment
+      - request_comment
+      - decision_comment
+      - created_at
+      title: ApprovalOut
+    ApprovalStatus:
+      type: string
+      enum:
+      - pending
+      - approved
+      - rejected
+      title: ApprovalStatus
+    ApprovalSubmit:
+      properties:
+        file_id:
+          type: string
+          title: File Id
+        version_number:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Version Number
+        comment:
+          type: string
+          title: Comment
+          default: ''
+      type: object
+      required:
+      - file_id
+      title: ApprovalSubmit
+    Body_upload_file_api_files_post:
+      properties:
+        upload:
+          type: string
+          contentMediaType: application/octet-stream
+          title: Upload
+        comment:
+          type: string
+          title: Comment
+          default: ''
+      type: object
+      required:
+      - upload
+      title: Body_upload_file_api_files_post
+    Body_upload_version_api_files__file_id__versions_post:
+      properties:
+        upload:
+          type: string
+          contentMediaType: application/octet-stream
+          title: Upload
+        comment:
+          type: string
+          title: Comment
+          default: ''
+      type: object
+      required:
+      - upload
+      title: Body_upload_version_api_files__file_id__versions_post
+    DashboardSummary:
+      properties:
+        total_files:
+          type: integer
+          title: Total Files
+        verified_files:
+          type: integer
+          title: Verified Files
+        pending_approvals:
+          type: integer
+          title: Pending Approvals
+        active_permissions:
+          type: integer
+          title: Active Permissions
+        integrity_score:
+          type: string
+          title: Integrity Score
+        blockchain_status:
+          type: string
+          title: Blockchain Status
+      type: object
+      required:
+      - total_files
+      - verified_files
+      - pending_approvals
+      - active_permissions
+      - integrity_score
+      - blockchain_status
+      title: DashboardSummary
+    DevLoginRequest:
+      properties:
+        email:
+          type: string
+          title: Email
+      type: object
+      required:
+      - email
+      title: DevLoginRequest
+    FileOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        name:
+          type: string
+          title: Name
+        owner:
+          type: string
+          title: Owner
+        size:
+          type: integer
+          title: Size
+        protection:
+          $ref: '#/components/schemas/ProtectionMode'
+        verification:
+          type: string
+          title: Verification
+        hash:
+          type: string
+          title: Hash
+        ownership_tx:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ownership Tx
+        content_type:
+          type: string
+          title: Content Type
+        current_version:
+          type: integer
+          title: Current Version
+        approved_version:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Approved Version
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+        updated_at:
+          type: string
+          format: date-time
+          title: Updated At
+        my_access:
+          anyOf:
+          - $ref: '#/components/schemas/PermissionLevel'
+          - type: 'null'
+      type: object
+      required:
+      - id
+      - name
+      - owner
+      - size
+      - protection
+      - verification
+      - hash
+      - content_type
+      - current_version
+      - created_at
+      - updated_at
+      title: FileOut
+      description: 'Field names/shape match Pavan''s frontend mock (handlers.ts) exactly
+        for the
+
+        top-level fields; extra fields are additive so nothing he reads breaks.'
+    GrantRequest:
+      properties:
+        grantee:
+          type: string
+          title: Grantee
+        permission:
+          $ref: '#/components/schemas/PermissionLevel'
+        expires_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Expires At
+        signature:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Signature
+      type: object
+      required:
+      - grantee
+      - permission
+      title: GrantRequest
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    PermissionLevel:
+      type: string
+      enum:
+      - read
+      - write
+      - manage
+      title: PermissionLevel
+    PermissionOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        file_id:
+          type: string
+          title: File Id
+        grantee:
+          type: string
+          title: Grantee
+        permission:
+          $ref: '#/components/schemas/PermissionLevel'
+        status:
+          type: string
+          title: Status
+        expires_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Expires At
+        granted_by:
+          type: string
+          title: Granted By
+        revoked_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+          title: Revoked At
+        revoked_reason:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Revoked Reason
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - file_id
+      - grantee
+      - permission
+      - status
+      - granted_by
+      - created_at
+      title: PermissionOut
+    ProtectionMode:
+      type: string
+      enum:
+      - none
+      - append_only
+      - read_only
+      title: ProtectionMode
+    ProtectionUpdate:
+      properties:
+        protection:
+          $ref: '#/components/schemas/ProtectionMode'
+      type: object
+      required:
+      - protection
+      title: ProtectionUpdate
+    Role:
+      type: string
+      enum:
+      - employee
+      - manager
+      - admin
+      - auditor
+      title: Role
+    RollbackRequest:
+      properties:
+        comment:
+          type: string
+          title: Comment
+          default: ''
+      type: object
+      title: RollbackRequest
+    TokenResponse:
+      properties:
+        access_token:
+          type: string
+          title: Access Token
+        token_type:
+          type: string
+          title: Token Type
+          default: bearer
+        user:
+          $ref: '#/components/schemas/UserOut'
+      type: object
+      required:
+      - access_token
+      - user
+      title: TokenResponse
+    UserOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        email:
+          type: string
+          title: Email
+        name:
+          type: string
+          title: Name
+        role:
+          $ref: '#/components/schemas/Role'
+        wallet_address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Wallet Address
+      type: object
+      required:
+      - id
+      - email
+      - name
+      - role
+      title: UserOut
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+        input:
+          title: Input
+        ctx:
+          type: object
+          title: Context
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VerifyResult:
+      properties:
+        file_id:
+          type: string
+          title: File Id
+        local_hash:
+          type: string
+          title: Local Hash
+        chain_hash:
+          type: string
+          title: Chain Hash
+        verified:
+          type: boolean
+          title: Verified
+        timestamp:
+          type: string
+          format: date-time
+          title: Timestamp
+      type: object
+      required:
+      - file_id
+      - local_hash
+      - chain_hash
+      - verified
+      - timestamp
+      title: VerifyResult
+      description: 'Matches POST /files/{id}/verify in the mock. Until Sriganesh''s
+        ChainService
+
+        is wired in, chain_hash mirrors local_hash and verified is always true.'
+    VersionOut:
+      properties:
+        id:
+          type: string
+          title: Id
+        file_id:
+          type: string
+          title: File Id
+        version_number:
+          type: integer
+          title: Version Number
+        sha256:
+          type: string
+          title: Sha256
+        size_bytes:
+          type: integer
+          title: Size Bytes
+        author_id:
+          type: string
+          title: Author Id
+        comment:
+          type: string
+          title: Comment
+        rolled_back_from:
+          anyOf:
+          - type: integer
+          - type: 'null'
+          title: Rolled Back From
+        created_at:
+          type: string
+          format: date-time
+          title: Created At
+      type: object
+      required:
+      - id
+      - file_id
+      - version_number
+      - sha256
+      - size_bytes
+      - author_id
+      - comment
+      - created_at
+      title: VersionOut
+    WalletNonceRequest:
+      properties:
+        address:
+          type: string
+          title: Address
+      type: object
+      required:
+      - address
+      title: WalletNonceRequest
+    WalletNonceResponse:
+      properties:
+        nonce:
+          type: string
+          title: Nonce
+        message:
+          type: string
+          title: Message
+      type: object
+      required:
+      - nonce
+      - message
+      title: WalletNonceResponse
+    WalletVerifyRequest:
+      properties:
+        address:
+          type: string
+          title: Address
+        nonce:
+          type: string
+          title: Nonce
+        signature:
+          type: string
+          title: Signature
+      type: object
+      required:
+      - address
+      - nonce
+      - signature
+      title: WalletVerifyRequest
+  securitySchemes:
+    HTTPBearer:
+      type: http
+      scheme: bearer

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "u1",
+    "name": "Asha Rao",
+    "role": "employee",
+    "wallet": "0xaaa1"
+  },
+  {
+    "id": "u2",
+    "name": "Ravi Kumar",
+    "role": "manager",
+    "wallet": "0xbbb2"
+  },
+  {
+    "id": "u3",
+    "name": "Meera Iyer",
+    "role": "admin",
+    "wallet": "0xccc3"
+  },
+  {
+    "id": "u4",
+    "name": "Kiran Shah",
+    "role": "auditor",
+    "wallet": "0xddd4"
+  }
+]
