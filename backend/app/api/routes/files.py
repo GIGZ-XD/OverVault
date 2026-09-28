@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File as FormFile, Form, HTTPException, Response, UploadFile
@@ -7,20 +8,45 @@ from app.config import get_settings
 from app.db import get_db
 from app.deps import get_current_user
 from app.models.file import File
+from app.models.permission import PermissionLevel
 from app.models.user import User
-from app.schemas.file import FileOut, ProtectionUpdate
+from app.schemas.file import FileOut, ProtectionUpdate, VerifyResult
 from app.services import permissions, protection, versioning
+from app.services.rbac import NotFound
 
 router = APIRouter(prefix="/files", tags=["files"])
 
 
 def file_out(db: Session, user: User, f: File) -> FileOut:
-    out = FileOut.model_validate(f)
-    out.my_access = permissions.effective_level(db, user, f)
-    return out
+    """Builds the response the mock returns (owner/size/protection/verification/hash/
+    ownership_tx), plus additive fields the mock doesn't have. See schemas/file.py."""
+    v = versioning.current_version(db, f)
+    if v is None:
+        raise NotFound("File has no versions.")
+    return FileOut(
+        id=f.id,
+        name=f.name,
+        owner=f.owner_id,
+        size=v.size_bytes,
+        protection=f.protection_mode,
+        # Self-consistency only (hash recomputed + compared on every read) until
+        # Sriganesh's ChainService confirms the on-chain commitment - see ADR 0005.
+        verification="verified",
+        hash=v.sha256,
+        ownership_tx=None,
+        content_type=f.content_type,
+        current_version=f.current_version,
+        approved_version=f.approved_version,
+        created_at=f.created_at,
+        updated_at=f.updated_at,
+        my_access=permissions.effective_level(db, user, f),
+    )
 
 
 def read_upload(upload: UploadFile) -> bytes:
+    # NOTE for Pavan: real storage needs the actual file bytes, so this stays
+    # multipart/form-data rather than the mock's JSON body. See ADR 0005 - the
+    # real upload UI needs to send `upload` (file) + `comment` (text) as FormData.
     limit = get_settings().max_upload_mb * 1024 * 1024
     data = upload.file.read(limit + 1)
     if len(data) > limit:
@@ -31,6 +57,11 @@ def read_upload(upload: UploadFile) -> bytes:
 
 
 def download_response(data: bytes, name: str, content_type: str, sha256: str, version: int) -> Response:
+    # NOTE for Pavan: this returns raw file bytes (not the mock's JSON {content,
+    # hash, verified}), because real content can be binary. The hash and version
+    # travel as headers (X-Content-SHA256, X-File-Version) - read those instead of
+    # a JSON body; the real integration in Phase 3 will need a small fetch-as-blob
+    # change on your side. See ADR 0005.
     return Response(
         content=data,
         media_type=content_type,
@@ -64,8 +95,6 @@ def list_files(db: Session = Depends(get_db), user: User = Depends(get_current_u
 @router.get("/{file_id}", response_model=FileOut)
 def get_file(file_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     f = versioning.get_file(db, file_id)
-    from app.models.permission import PermissionLevel
-
     permissions.require_access(db, user, f, PermissionLevel.read)
     return file_out(db, user, f)
 
@@ -77,12 +106,30 @@ def download_current(file_id: str, db: Session = Depends(get_db), user: User = D
     return download_response(data, f.name, f.content_type, v.sha256, v.version_number)
 
 
-@router.patch("/{file_id}/protection", response_model=FileOut)
+@router.post("/{file_id}/verify", response_model=VerifyResult)
+def verify_file(file_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Matches the mock's POST /files/:id/verify. Recomputes and compares the
+    local hash on every call; chain_hash mirrors it until Sriganesh's ChainService
+    is wired in (see ADR 0005) - at that point chain_hash comes from MSTScan and
+    `verified` reflects an actual on-chain comparison."""
+    f = versioning.get_file(db, file_id)
+    permissions.require_access(db, user, f, PermissionLevel.read, content=True)
+    v = versioning.current_version(db, f)
+    if v is None:
+        raise NotFound("File has no versions.")
+    versioning.read_version(db, f, user, v.version_number)  # raises IntegrityViolation on mismatch
+    return VerifyResult(
+        file_id=f.id, local_hash=v.sha256, chain_hash=v.sha256, verified=True,
+        timestamp=datetime.now(timezone.utc),
+    )
+
+
+@router.put("/{file_id}/protection", response_model=FileOut)
 def set_protection(
     file_id: str, body: ProtectionUpdate, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
     f = versioning.get_file(db, file_id)
-    protection.set_mode(db, f, user, body.protection_mode)
+    protection.set_mode(db, f, user, body.protection)
     return file_out(db, user, f)
 
 

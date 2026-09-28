@@ -1,18 +1,27 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from app.models.file import ProtectionMode
 from app.models.permission import PermissionLevel
 
 
 class FileOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+    """Field names/shape match Pavan's frontend mock (handlers.ts) exactly for the
+    top-level fields; extra fields are additive so nothing he reads breaks."""
+
     id: str
     name: str
+    owner: str  # == File.owner_id
+    size: int  # current version's size_bytes
+    protection: ProtectionMode  # == File.protection_mode
+    verification: str  # "verified" | "unverified" - self-consistency only until
+    #                      Sriganesh's chain layer lands; see ADR 0005.
+    hash: str  # current version's sha256
+    ownership_tx: str | None = None  # populated once the chain layer is wired in
+
+    # Additive fields Pavan's mock doesn't have but the real app needs later.
     content_type: str
-    owner_id: str
-    protection_mode: ProtectionMode
     current_version: int
     approved_version: int | None = None
     created_at: datetime
@@ -21,14 +30,24 @@ class FileOut(BaseModel):
 
 
 class ProtectionUpdate(BaseModel):
-    protection_mode: ProtectionMode
+    protection: ProtectionMode  # was protection_mode - renamed to match the mock
+
+
+class VerifyResult(BaseModel):
+    """Matches POST /files/{id}/verify in the mock. Until Sriganesh's ChainService
+    is wired in, chain_hash mirrors local_hash and verified is always true."""
+
+    file_id: str
+    local_hash: str
+    chain_hash: str
+    verified: bool
+    timestamp: datetime
 
 
 class DashboardSummary(BaseModel):
     total_files: int
-    total_versions: int
+    verified_files: int
     pending_approvals: int
-    active_grants: int
-    expiring_soon: int
-    protected_files: int
-    approved_files: int
+    active_permissions: int
+    integrity_score: str
+    blockchain_status: str

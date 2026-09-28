@@ -43,13 +43,13 @@ def _wallet():
     return nonce, verify
 
 
-@router.post("/wallet/nonce", response_model=WalletNonceResponse)
+@router.post("/nonce", response_model=WalletNonceResponse)  # was /wallet/nonce - path matches the mock
 def wallet_nonce(body: WalletNonceRequest):
     nonce, _ = _wallet()
     return nonce.issue_nonce(body.address)  # ASSUMED: -> {"nonce": str, "message": str}
 
 
-@router.post("/wallet/verify", response_model=TokenResponse)
+@router.post("/wallet-login", response_model=TokenResponse)  # was /wallet/verify - path matches the mock
 def wallet_verify(body: WalletVerifyRequest, db: Session = Depends(get_db)):
     _, verify = _wallet()
     try:

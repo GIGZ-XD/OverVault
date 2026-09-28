@@ -1,3 +1,6 @@
+# NOTE for Pavan: this stays multipart/form-data (not the mock's JSON body),
+# because real version content needs actual bytes. See files.py's read_upload()
+# note and ADR 0005.
 from fastapi import APIRouter, Depends, File as FormFile, Form, UploadFile
 from sqlalchemy.orm import Session
 
