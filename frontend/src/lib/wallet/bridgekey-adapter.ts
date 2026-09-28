@@ -1,58 +1,17 @@
 /**
- * BridgeKey Wallet adapter (owner: Pannaga) — Phase 2 implementation scaffold.
+ * BridgeKey Wallet adapter — Phase 2 real implementation (owner: Pannaga).
  *
- * STATUS: BLOCKED — BridgeKey browser extension API not yet documented in this
- * repository. The implementation skeleton below marks every unknown with a
- * BRIDGEKEY_API_REQUIRED comment. Once the BridgeKey API is confirmed, replace
- * each TODO block with the real call.
+ * Confirmed runtime environment (manually verified 2026-09-28):
+ *   Provider   : window.ethereum
+ *   Identity   : window.ethereum.isBridgeKey === true
+ *   Standard   : EIP-1193 (provider.request())
+ *   Chain      : MST Testnet — chainId 0x5752035 (decimal 91562037)
+ *   Methods    : eth_requestAccounts, eth_chainId, eth_accounts,
+ *                personal_sign, eth_sendTransaction
+ *   Events     : accountsChanged, chainChanged, disconnect
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * INFORMATION REQUIRED FROM BRIDGEKEY TEAM / DOCS:
- * ─────────────────────────────────────────────────────────────────────────────
- *
- * [BK-1] Window injection key
- *        What property does BridgeKey inject on window?
- *        e.g. window.bridgekey, window.mst, window.ethereum (EIP-1193 provider)
- *
- * [BK-2] Installation detection
- *        How to detect if the extension is installed?
- *        e.g. typeof window.bridgekey !== "undefined"
- *            or window.ethereum?.isBridgeKey === true
- *
- * [BK-3] Connect / account request method
- *        How to request wallet connection and get the active address?
- *        EIP-1193: await window.ethereum.request({ method: "eth_requestAccounts" })
- *        Custom:   await window.bridgekey.connect()
- *
- * [BK-4] Network / chain ID
- *        What is the MST Testnet chain ID (as hex or decimal)?
- *        e.g. EIP-1193: "0x1" for mainnet; MST Testnet might be e.g. "0x4D2"
- *        Custom: window.bridgekey.getNetwork() → "MST Testnet"
- *
- * [BK-5] Personal sign (EIP-191)
- *        How to request a personal_sign (human-readable message)?
- *        EIP-1193: window.ethereum.request({ method: "personal_sign", params: [msg, address] })
- *        Custom:   window.bridgekey.signMessage(message)
- *
- * [BK-6] Send transaction
- *        How to send a pre-built transaction?
- *        EIP-1193: window.ethereum.request({ method: "eth_sendTransaction", params: [tx] })
- *        Custom:   window.bridgekey.sendTransaction(payload)
- *
- * [BK-7] User rejection error code
- *        What error code is thrown when the user rejects?
- *        EIP-1193: error.code === 4001
- *        Custom:   unknown
- *
- * [BK-8] Disconnect event
- *        How does the extension signal wallet disconnect?
- *        EIP-1193: window.ethereum.on("disconnect", handler)
- *        Custom:   unknown
- * ─────────────────────────────────────────────────────────────────────────────
- *
- * Until BridgeKey API is confirmed, NEXT_PUBLIC_WALLET_MODE must remain "mock".
- * The adapter throws WalletNotInstalledError for all real calls so the application
- * fails fast rather than silently misbehaving.
+ * Architecture rule: nothing outside this file may access window.ethereum.
+ * All other application code must go through WalletAdapter.
  */
 
 import type { WalletAdapter } from "./adapter";
@@ -63,218 +22,300 @@ import {
   WalletConnectionError,
 } from "./adapter";
 
-// ─── BridgeKey network constants ────────────────────────────────────────────
-// BRIDGEKEY_API_REQUIRED [BK-4]: Replace with confirmed MST Testnet identifier.
-const EXPECTED_NETWORK_NAME = "MST Testnet";
-// const EXPECTED_CHAIN_ID = "0x???"; // [BK-4] replace with real MST Testnet chain ID
+// ─── MST Testnet constants ────────────────────────────────────────────────────
+const MST_CHAIN_ID_HEX = "0x5752035";       // confirmed: 91562037 decimal
+const MST_NETWORK_NAME = "MST Testnet";
 
-// ─── BridgeKey window type (to be confirmed) ────────────────────────────────
-// BRIDGEKEY_API_REQUIRED [BK-1], [BK-3], [BK-5], [BK-6], [BK-7], [BK-8]:
-// Once confirmed, extend this interface with the real BridgeKey API shape.
-interface BridgeKeyProvider {
-  // [BK-1] Placeholder — actual shape unknown
-  readonly isBridgeKey?: boolean;
-  // [BK-3]
-  request?(args: { method: string; params?: unknown[] }): Promise<unknown>;
-  // [BK-4]
-  networkVersion?: string;
+// ─── EIP-1193 error codes ─────────────────────────────────────────────────────
+// 4001 = User Rejected Request (EIP-1193 standard)
+// -32601 = Method Not Found (NOT user rejection — do not map to WalletUserRejectedError)
+const EIP1193_USER_REJECTED = 4001;
+
+// ─── EIP-1193 provider shape ──────────────────────────────────────────────────
+interface EIP1193Provider {
+  request(args: { method: string; params?: unknown[] }): Promise<unknown>;
+  on(event: string, handler: (...args: unknown[]) => void): void;
+  removeListener(event: string, handler: (...args: unknown[]) => void): void;
+  isBridgeKey?: boolean;
+  isMetaMask?: boolean;
   chainId?: string;
-  // [BK-8]
-  on?(event: string, handler: (...args: unknown[]) => void): void;
-  removeListener?(event: string, handler: (...args: unknown[]) => void): void;
+  selectedAddress?: string | null;
 }
 
 declare global {
   interface Window {
-    // [BK-1] — actual key name unknown; placeholder uses "bridgekey"
-    bridgekey?: BridgeKeyProvider;
-    // Also try window.ethereum in case BridgeKey is an EIP-1193 provider
-    ethereum?: BridgeKeyProvider;
+    ethereum?: EIP1193Provider;
   }
 }
 
-// ─── Helper: get the provider if available ───────────────────────────────────
-// BRIDGEKEY_API_REQUIRED [BK-1], [BK-2]: replace with confirmed detection logic.
-function getProvider(): BridgeKeyProvider | null {
+// ─── Provider accessor ───────────────────────────────────────────────────────
+/**
+ * Returns the BridgeKey EIP-1193 provider if installed, null otherwise.
+ * Safe to call during SSR (returns null when window is undefined).
+ */
+function getProvider(): EIP1193Provider | null {
   if (typeof window === "undefined") return null;
-
-  // Option A — BridgeKey injects a custom object
-  if (window.bridgekey != null) return window.bridgekey;
-
-  // Option B — BridgeKey is an EIP-1193 provider on window.ethereum
-  // if (window.ethereum?.isBridgeKey) return window.ethereum;
-
-  // Option C — BridgeKey replaces window.ethereum entirely
-  // if (window.ethereum != null) return window.ethereum;
-
+  const p = window.ethereum;
+  // BridgeKey is identified by isBridgeKey=true on the injected provider.
+  // If another wallet (MetaMask etc.) is also installed and takes window.ethereum,
+  // the providers[] array (EIP-6963) may be needed — but confirmed probe showed
+  // BridgeKey sets isBridgeKey=true on window.ethereum directly.
+  if (p && p.isBridgeKey === true) return p;
   return null;
 }
 
-// ─── Helper: read the active network name ────────────────────────────────────
-// BRIDGEKEY_API_REQUIRED [BK-4]: replace with confirmed network detection.
-async function getNetworkName(_provider: BridgeKeyProvider): Promise<string> {
-  // EIP-1193 example:
-  // const chainId = await provider.request?.({ method: "eth_chainId" });
-  // return chainId === EXPECTED_CHAIN_ID ? EXPECTED_NETWORK_NAME : `Unknown (${chainId})`;
+// ─── Error classifier ────────────────────────────────────────────────────────
+/**
+ * Maps a raw provider error to the WalletAdapter error hierarchy.
+ * Uses EIP-1193 standard codes where confirmed; preserves unknown errors.
+ */
+function classifyProviderError(err: unknown): never {
+  if (err instanceof WalletNotInstalledError ||
+      err instanceof WalletUserRejectedError  ||
+      err instanceof WalletNetworkError       ||
+      err instanceof WalletConnectionError) {
+    throw err; // already classified — re-throw as-is
+  }
 
-  // Custom example:
-  // return (await provider.request?.({ method: "bk_getNetwork" })) as string;
+  if (err && typeof err === "object" && "code" in err) {
+    const code = (err as { code: number }).code;
+    // EIP-1193: 4001 = user explicitly rejected the request
+    if (code === EIP1193_USER_REJECTED) {
+      throw new WalletUserRejectedError();
+    }
+    // -32002 = request already pending (another connect is in flight)
+    if (code === -32002) {
+      throw new WalletConnectionError(
+        "A BridgeKey request is already pending. Open the extension to respond."
+      );
+    }
+    // Preserve other provider errors with their original message
+  }
 
-  // STUB: unknown
-  throw new WalletNotInstalledError();
+  const message =
+    err instanceof Error
+      ? err.message
+      : typeof err === "string"
+      ? err
+      : "Unknown wallet error.";
+
+  throw new WalletConnectionError(message);
+}
+
+// ─── Network helpers ─────────────────────────────────────────────────────────
+async function getChainId(provider: EIP1193Provider): Promise<string> {
+  return (await provider.request({ method: "eth_chainId" })) as string;
+}
+
+async function getNetworkName(provider: EIP1193Provider): Promise<string> {
+  const chainId = await getChainId(provider);
+  if (chainId.toLowerCase() === MST_CHAIN_ID_HEX.toLowerCase()) {
+    return MST_NETWORK_NAME;
+  }
+  return `Unknown network (chainId ${chainId})`;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// BridgeKey Adapter implementation
+// BridgeKey WalletAdapter implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
 export const bridgekeyAdapter: WalletAdapter = {
   // ── isInstalled ────────────────────────────────────────────────────────────
+  // BK-2: Detect installation via window.ethereum.isBridgeKey === true
   isInstalled(): boolean {
-    // BRIDGEKEY_API_REQUIRED [BK-1], [BK-2]
-    // Replace with: return getProvider() !== null;
     return getProvider() !== null;
   },
 
   // ── connect ────────────────────────────────────────────────────────────────
+  // BK-3: eth_requestAccounts → address
+  // BK-4: eth_chainId → validate MST Testnet
   async connect(): Promise<{ address: string; network: string }> {
     const provider = getProvider();
-    if (!provider) {
-      throw new WalletNotInstalledError();
-    }
+    if (!provider) throw new WalletNotInstalledError();
 
-    let address: string;
-    let network: string;
+    let accounts: string[];
 
     try {
-      // BRIDGEKEY_API_REQUIRED [BK-3]
-      // EIP-1193 example:
-      //   const accounts = await provider.request?.({ method: "eth_requestAccounts" }) as string[];
-      //   address = accounts[0];
-      //
-      // Custom example:
-      //   const result = await provider.request?.({ method: "bk_connect" }) as { address: string };
-      //   address = result.address;
-      //
-      // STUB — throw until API is confirmed:
-      throw new Error("BRIDGEKEY_API_REQUIRED: connect method not confirmed. See [BK-3].");
+      // Prompts the BridgeKey popup — user approves or rejects
+      accounts = (await provider.request({
+        method: "eth_requestAccounts",
+      })) as string[];
     } catch (err) {
-      // BRIDGEKEY_API_REQUIRED [BK-7]
-      if (err instanceof Error && "code" in err) {
-        const code = (err as { code: number }).code;
-        // EIP-1193 user rejection: code 4001
-        if (code === 4001) throw new WalletUserRejectedError();
-      }
-      if (err instanceof WalletNotInstalledError) throw err;
+      classifyProviderError(err);
+    }
+
+    if (!accounts!.length) {
       throw new WalletConnectionError(
-        err instanceof Error ? err.message : "Failed to connect BridgeKey wallet."
+        "No accounts returned from BridgeKey. Did you connect an account?"
       );
     }
 
-    // BRIDGEKEY_API_REQUIRED [BK-4]
-    // provider is guaranteed non-null here (checked at top of connect())
-    const confirmedProvider = provider as BridgeKeyProvider;
+    // Validate network
+    let chainId: string;
     try {
-      network = await getNetworkName(confirmedProvider);
-    } catch {
-      network = "Unknown";
+      chainId = await getChainId(provider);
+    } catch (err) {
+      classifyProviderError(err);
     }
 
-    if (network !== EXPECTED_NETWORK_NAME) {
-      throw new WalletNetworkError(EXPECTED_NETWORK_NAME, network);
+    if (chainId!.toLowerCase() !== MST_CHAIN_ID_HEX.toLowerCase()) {
+      const networkName = await getNetworkName(provider).catch(() => `chainId ${chainId}`);
+      throw new WalletNetworkError(MST_NETWORK_NAME, networkName);
     }
 
-    return { address: address!.toLowerCase(), network };
+    const address = accounts![0].toLowerCase();
+    return { address, network: MST_NETWORK_NAME };
   },
 
   // ── disconnect ─────────────────────────────────────────────────────────────
+  // EIP-1193 has no standard disconnect RPC — we simply clean up locally.
+  // Actual account unlinking is driven by accountsChanged events (see onWalletDisconnect).
   async disconnect(): Promise<void> {
-    // BRIDGEKEY_API_REQUIRED [BK-8]
-    // BridgeKey may not have an explicit disconnect method.
-    // EIP-1193 has no standard disconnect — rely on disconnect event instead.
-    //
-    // Example (if supported):
-    // await getProvider()?.request?.({ method: "wallet_revokePermissions", params: [{ eth_accounts: {} }] });
+    // No provider call required; the extension manages its own session.
+    // Application state cleanup is handled by the component/context layer.
   },
 
   // ── signMessage ────────────────────────────────────────────────────────────
+  // BK-5: personal_sign (EIP-191)
+  // Param order confirmed: [message, address]
   async signMessage(message: string): Promise<string> {
     const provider = getProvider();
     if (!provider) throw new WalletNotInstalledError();
 
+    // Get the current connected address
+    let accounts: string[];
     try {
-      // BRIDGEKEY_API_REQUIRED [BK-5]
-      // EIP-191 personal_sign example:
-      //   const accounts = await provider.request?.({ method: "eth_accounts" }) as string[];
-      //   const address = accounts[0];
-      //   const signature = await provider.request?.({
-      //     method: "personal_sign",
-      //     params: [message, address],
-      //   }) as string;
-      //   return signature;
-      //
-      // Custom example:
-      //   return await provider.request?.({ method: "bk_signMessage", params: [message] }) as string;
-      //
-      // STUB:
-      throw new Error("BRIDGEKEY_API_REQUIRED: signMessage method not confirmed. See [BK-5].");
+      accounts = (await provider.request({
+        method: "eth_accounts",
+      })) as string[];
     } catch (err) {
-      // BRIDGEKEY_API_REQUIRED [BK-7]
-      if (err instanceof Error && "code" in err) {
-        const code = (err as { code: number }).code;
-        if (code === 4001) throw new WalletUserRejectedError();
-      }
-      if (err instanceof WalletNotInstalledError || err instanceof WalletUserRejectedError) throw err;
+      classifyProviderError(err);
+    }
+
+    if (!accounts!.length) {
       throw new WalletConnectionError(
-        err instanceof Error ? err.message : "Failed to sign message."
+        "Wallet is not connected. Please connect BridgeKey before signing."
       );
     }
+
+    // Validate network before signing (network may have changed since connect)
+    let chainId: string;
+    try {
+      chainId = await getChainId(provider);
+    } catch (err) {
+      classifyProviderError(err);
+    }
+
+    if (chainId!.toLowerCase() !== MST_CHAIN_ID_HEX.toLowerCase()) {
+      const networkName = await getNetworkName(provider).catch(() => `chainId ${chainId}`);
+      throw new WalletNetworkError(MST_NETWORK_NAME, networkName);
+    }
+
+    // personal_sign: params = [message, address]
+    // EIP-191: signs "\x19Ethereum Signed Message:\n" + message.length + message
+    let signature: string;
+    try {
+      signature = (await provider.request({
+        method: "personal_sign",
+        params: [message, accounts![0]],
+      })) as string;
+    } catch (err) {
+      classifyProviderError(err);
+    }
+
+    return signature!;
   },
 
   // ── sendTransaction ────────────────────────────────────────────────────────
+  // BK-6: eth_sendTransaction
+  // Only called from the signing workflow — payload must come from the app,
+  // not invented here. Returns the provider tx hash.
   async sendTransaction(payload: unknown): Promise<{ txHash: string }> {
     const provider = getProvider();
     if (!provider) throw new WalletNotInstalledError();
 
+    let txHash: string;
     try {
-      // BRIDGEKEY_API_REQUIRED [BK-6]
-      // EIP-1193 example:
-      //   const txHash = await provider.request?.({
-      //     method: "eth_sendTransaction",
-      //     params: [payload],
-      //   }) as string;
-      //   return { txHash };
-      //
-      // Custom example:
-      //   const result = await provider.request?.({ method: "bk_sendTransaction", params: [payload] });
-      //   return { txHash: (result as { hash: string }).hash };
-      //
-      // STUB:
-      throw new Error("BRIDGEKEY_API_REQUIRED: sendTransaction method not confirmed. See [BK-6].");
+      txHash = (await provider.request({
+        method: "eth_sendTransaction",
+        params: [payload],
+      })) as string;
     } catch (err) {
-      if (err instanceof Error && "code" in err) {
-        const code = (err as { code: number }).code;
-        if (code === 4001) throw new WalletUserRejectedError();
-      }
-      if (err instanceof WalletNotInstalledError || err instanceof WalletUserRejectedError) throw err;
-      throw new WalletConnectionError(
-        err instanceof Error ? err.message : "Failed to send transaction."
-      );
+      classifyProviderError(err);
     }
+
+    return { txHash: txHash! };
   },
 };
 
-// ─── Disconnect event listener helper ────────────────────────────────────────
-// BRIDGEKEY_API_REQUIRED [BK-8]: replace with confirmed event name + handler pattern.
+// ─────────────────────────────────────────────────────────────────────────────
+// BK-8: Disconnect and event helpers
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Registers a handler that fires when the wallet disconnects or the active
+ * account changes to an empty list.
+ *
+ * Returns a cleanup function — call it in useEffect cleanup or component unmount.
+ *
+ * Usage:
+ *   const cleanup = onWalletDisconnect(() => router.replace("/login"));
+ *   return cleanup; // in useEffect return
+ */
 export function onWalletDisconnect(handler: () => void): () => void {
   const provider = getProvider();
-  if (!provider?.on) return () => {};
+  if (!provider) return () => {};
 
-  // EIP-1193 uses "disconnect" event; BridgeKey may differ.
-  // provider.on("disconnect", handler);  // [BK-8]
-  // provider.on("accountsChanged", (accounts) => { if (!accounts.length) handler(); }); // alternative
+  // accountsChanged([]) fires when the user disconnects or locks the wallet
+  const onAccountsChanged = (accounts: unknown) => {
+    if (Array.isArray(accounts) && accounts.length === 0) {
+      handler();
+    }
+  };
+
+  // EIP-1193 disconnect event (also fires on network errors)
+  const onDisconnect = () => {
+    handler();
+  };
+
+  provider.on("accountsChanged", onAccountsChanged as () => void);
+  provider.on("disconnect", onDisconnect);
 
   return () => {
-    // provider.removeListener?.("disconnect", handler);  // [BK-8]
+    provider.removeListener("accountsChanged", onAccountsChanged as () => void);
+    provider.removeListener("disconnect", onDisconnect);
   };
 }
+
+/**
+ * Registers a handler that fires when the active chain changes.
+ * Validates the new chain against MST Testnet and calls onWrongNetwork
+ * if the user switches away.
+ *
+ * Returns a cleanup function.
+ */
+export function onChainChanged(
+  onCorrectNetwork: () => void,
+  onWrongNetwork: (chainId: string) => void
+): () => void {
+  const provider = getProvider();
+  if (!provider) return () => {};
+
+  const handleChainChanged = (chainId: unknown) => {
+    const id = (chainId as string).toLowerCase();
+    if (id === MST_CHAIN_ID_HEX.toLowerCase()) {
+      onCorrectNetwork();
+    } else {
+      onWrongNetwork(chainId as string);
+    }
+  };
+
+  provider.on("chainChanged", handleChainChanged as () => void);
+
+  return () => {
+    provider.removeListener("chainChanged", handleChainChanged as () => void);
+  };
+}
+
+// Export constants for use in tests or UI
+export { MST_CHAIN_ID_HEX, MST_NETWORK_NAME };
