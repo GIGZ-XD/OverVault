@@ -6,6 +6,8 @@
 
 # Env and secrets
 .env
+*.db
+Storage/
 .env.*
 !.env.example
 *.pem
