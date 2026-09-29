@@ -12,23 +12,23 @@ declare module "@nomicfoundation/hardhat-ethers/types" {
   interface HardhatEthersHelpers extends HardhatEthersHelpersBase {
   getContractFactory(name: 'Audit', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.Audit__factory>
 getContractFactory(name: 'Integrity', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.Integrity__factory>
-getContractFactory(name: 'Ownership', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.Ownership__factory>
 getContractFactory(name: 'Permission', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.Permission__factory>
+getContractFactory(name: 'Ownership', signerOrOptions?: ethers.Signer | FactoryOptions): Promise<Contracts.Ownership__factory>
 
   getContractAt(name: 'Audit', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.Audit>
 getContractAt(name: 'Integrity', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.Integrity>
-getContractAt(name: 'Ownership', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.Ownership>
 getContractAt(name: 'Permission', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.Permission>
+getContractAt(name: 'Ownership', address: string | ethers.Addressable, signer?: ethers.Signer): Promise<Contracts.Ownership>
 
   deployContract(name: 'Audit', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.Audit>
 deployContract(name: 'Integrity', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.Integrity>
-deployContract(name: 'Ownership', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.Ownership>
 deployContract(name: 'Permission', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.Permission>
+deployContract(name: 'Ownership', signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.Ownership>
 
   deployContract(name: 'Audit', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.Audit>
 deployContract(name: 'Integrity', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.Integrity>
-deployContract(name: 'Ownership', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.Ownership>
 deployContract(name: 'Permission', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.Permission>
+deployContract(name: 'Ownership', args: any[], signerOrOptions?: ethers.Signer | DeployContractOptions): Promise<Contracts.Ownership>
 
     // default types
     getContractFactory(
