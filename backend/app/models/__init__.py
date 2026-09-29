@@ -9,4 +9,6 @@ __all__ = [
     "AuditOutbox",
     "Base",
     "OutboxStatus",
+    "User",
 ]
+from app.models.user import User

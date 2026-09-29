@@ -6,6 +6,8 @@
 
 # Env and secrets
 .env
+*.db
+Storage/
 .env.*
 !.env.example
 *.pem
@@ -35,3 +37,16 @@ test-results/
 # Local data
 /data/
 *.log
+
+# Production files
+STRUCTURE.md
+implementation_plan.md
+architecture.md
+prd.md
+phases.md
+OverVault_Team_Work_Distribution.pdf
+
+# Hardhat / TypeChain generated files
+contracts/artifacts/
+contracts/cache/
+contracts/types/

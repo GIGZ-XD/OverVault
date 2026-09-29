@@ -1,42 +1,130 @@
 {
-  "_note": "Owner: Pannaga. Human readable text shown in wallet for each on-chain action.",
+  "_meta": {
+    "owner": "Pannaga",
+    "status": "frozen",
+    "version": "1.0.0",
+    "note": "Human-readable text shown in wallet for each on-chain action. Fields must match ChainService method inputs (chain_service.py). Coordinate changes with Sriganesh (contract inputs) and Vineeth (API layer)."
+  },
+
   "ownership_register": {
-    "template": "Register ownership of file {file_id} (hash {hash}) to {owner}",
-    "fields": [
-      "file_id",
-      "hash",
-      "owner"
-    ]
+    "description": "Register a file's content hash and owner on-chain when a file is first uploaded.",
+    "template": "Register ownership of file {file_id} (hash {content_hash}) to {owner_address}",
+    "fields": {
+      "file_id": {
+        "type": "string",
+        "description": "Application file UUID",
+        "example": "file-abc-123"
+      },
+      "content_hash": {
+        "type": "string",
+        "description": "SHA-256 hex digest of the file content",
+        "example": "9f3a8c2d1e4b5f6a7890abcdef1234567890abcdef1234567890abcdef123456"
+      },
+      "owner_address": {
+        "type": "string",
+        "description": "Lowercase wallet address of the owner",
+        "example": "0xaaa1"
+      }
+    },
+    "chain_service_method": "register_ownership",
+    "chain_service_args": ["file_id", "owner_address", "content_hash"]
   },
+
   "permission_grant": {
-    "template": "Grant {permission} on file {file_id} to {grantee} until {expiry}",
-    "fields": [
-      "file_id",
-      "permission",
-      "grantee",
-      "expiry"
-    ]
+    "description": "Grant a specific permission on a file to a grantee wallet address.",
+    "template": "Grant {permission} access on file {file_id} to {grantee_address} until {expiry_iso}",
+    "fields": {
+      "file_id": {
+        "type": "string",
+        "description": "Application file UUID",
+        "example": "file-abc-123"
+      },
+      "permission": {
+        "type": "string",
+        "enum": ["read", "write", "append", "admin"],
+        "description": "Permission level being granted",
+        "example": "read"
+      },
+      "grantee_address": {
+        "type": "string",
+        "description": "Lowercase wallet address of the grantee",
+        "example": "0xbbb2"
+      },
+      "expiry_iso": {
+        "type": "string | null",
+        "description": "ISO 8601 expiry date/time, or null for no expiry",
+        "example": "2026-12-31T23:59:59Z"
+      },
+      "expiry_unix": {
+        "type": "integer | null",
+        "description": "Unix timestamp for contract use, or null",
+        "example": 1798761599
+      }
+    },
+    "chain_service_method": "record_permission",
+    "chain_service_args": ["file_id", "grantee_address", "permission", "expiry_unix"]
   },
+
   "permission_revoke": {
-    "template": "Revoke access on file {file_id} from {grantee}",
-    "fields": [
-      "file_id",
-      "grantee"
-    ]
+    "description": "Revoke a previously granted permission from a grantee.",
+    "template": "Revoke access on file {file_id} from {grantee_address}",
+    "fields": {
+      "file_id": {
+        "type": "string",
+        "description": "Application file UUID",
+        "example": "file-abc-123"
+      },
+      "grantee_address": {
+        "type": "string",
+        "description": "Lowercase wallet address whose access is revoked",
+        "example": "0xbbb2"
+      }
+    },
+    "chain_service_method": "record_permission",
+    "chain_service_args": ["file_id", "grantee_address", "revoke", null]
   },
+
   "approval_decision": {
-    "template": "{decision} change {approval_id} on file {file_id}",
-    "fields": [
-      "decision",
-      "approval_id",
-      "file_id"
-    ]
+    "description": "Approve or reject a pending change request on a file.",
+    "template": "{decision} change request {approval_id} on file {file_id}",
+    "fields": {
+      "decision": {
+        "type": "string",
+        "enum": ["Approve", "Reject"],
+        "description": "The approval decision",
+        "example": "Approve"
+      },
+      "approval_id": {
+        "type": "string",
+        "description": "Application approval request UUID",
+        "example": "appr-xyz-789"
+      },
+      "file_id": {
+        "type": "string",
+        "description": "Application file UUID",
+        "example": "file-abc-123"
+      }
+    },
+    "chain_service_method": "log_audit",
+    "chain_service_args": ["approval_decision", "approval_id", "actor_address"]
   },
-  "rollback": {
+
+  "version_rollback": {
+    "description": "Roll back a file to a specified version.",
     "template": "Roll back file {file_id} to version {version}",
-    "fields": [
-      "file_id",
-      "version"
-    ]
+    "fields": {
+      "file_id": {
+        "type": "string",
+        "description": "Application file UUID",
+        "example": "file-abc-123"
+      },
+      "version": {
+        "type": "integer",
+        "description": "Version number to restore",
+        "example": 2
+      }
+    },
+    "chain_service_method": "commit_hash",
+    "chain_service_args": ["file_id", "version", "content_hash"]
   }
 }

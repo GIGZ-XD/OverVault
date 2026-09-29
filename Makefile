@@ -1,18 +1,12 @@
-.PHONY: up down backend frontend test-backend test-frontend test-e2e spec-check
-
-up:
-	docker compose up -d
-down:
-	docker compose down
-backend:
+.PHONY: install run test migrate openapi
+install:
+	cd backend && pip install -r requirements-dev.txt
+run:
 	cd backend && uvicorn app.main:app --reload --port 8000
-frontend:
-	cd frontend && npm run dev
-test-backend:
-	cd backend && pytest -q
-test-frontend:
-	cd frontend && npm test
-test-e2e:
-	cd e2e && npx playwright test
-spec-check:
-	diff specs/chain_service.py backend/app/chain/base.py
+test:
+	cd backend && python -m pytest
+migrate:
+	cd backend && alembic upgrade head
+# Dump the live schema so specs/openapi.yaml can be diffed/updated (needs: pip install pyyaml)
+openapi:
+	cd backend && python -c "import json,yaml; from app.main import app; print(yaml.safe_dump(app.openapi(), sort_keys=False))" > ../specs/openapi.generated.yaml
