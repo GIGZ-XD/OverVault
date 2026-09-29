@@ -1,118 +1,160 @@
-import WalletChip from "@/components/ui/wallet-chip";
-import TxLink from "@/components/ui/tx-link";
-import type { AuditEvent, Verification } from "@/lib/api/types";
+"use client";
+import React from "react";
+import { DataTable, Column } from "@/components/ui/data-table";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { shortHash, formatDate } from "@/lib/utils";
+import {
+  FileText,
+  ShieldCheck,
+  Upload,
+  Lock,
+  KeyRound,
+  UserMinus,
+  CheckSquare,
+  XSquare,
+  Download,
+  ExternalLink,
+  Hash,
+  ScrollText,
+} from "lucide-react";
 
-interface AuditTableProps {
-  events: AuditEvent[];
-  isLoading?: boolean;
-  isError?: boolean;
+export interface AuditEvent {
+  id: string;
+  event_type: string;
+  file_id: string;
+  file_name?: string;
+  actor: string;
+  actor_name?: string;
+  tx_hash: string | null;
+  verification: "verified" | "pending" | "tampered" | string;
+  timestamp: number;
+  detail?: string;
 }
 
-const verificationLabel: Record<Verification, string> = {
-  verified: "Verified",
-  pending: "Pending",
-  tampered: "Failed",
+export interface AuditTableProps {
+  events: AuditEvent[];
+  isLoading?: boolean;
+  onSelectEvent?: (event: AuditEvent) => void;
+}
+
+const EVENT_ICONS: Record<string, React.ReactNode> = {
+  ownership_register: <Upload className="w-3.5 h-3.5" />,
+  version_update: <FileText className="w-3.5 h-3.5" />,
+  access_grant: <KeyRound className="w-3.5 h-3.5" />,
+  access_revoke: <UserMinus className="w-3.5 h-3.5" />,
+  hash_verification: <ShieldCheck className="w-3.5 h-3.5" />,
+  protection_change: <Lock className="w-3.5 h-3.5" />,
+  approval_submitted: <CheckSquare className="w-3.5 h-3.5" />,
+  approval_decision: <XSquare className="w-3.5 h-3.5" />,
+  file_download: <Download className="w-3.5 h-3.5" />,
 };
 
-const verificationColor: Record<Verification, string> = {
-  verified: "var(--success)",
-  pending: "var(--warning)",
-  tampered: "var(--danger)",
+const EVENT_LABELS: Record<string, string> = {
+  ownership_register: "Ownership Registered",
+  version_update: "Version Update",
+  access_grant: "Access Granted",
+  access_revoke: "Access Revoked",
+  hash_verification: "Hash Verification",
+  protection_change: "Protection Changed",
+  approval_submitted: "Approval Submitted",
+  approval_decision: "Approval Decision",
+  file_download: "File Download",
 };
 
-export default function AuditTable({ events, isLoading = false, isError = false }: AuditTableProps) {
-  if (isLoading) {
-    return (
-      <div
-        className="rounded-md border p-6 text-sm"
-        style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text-muted)" }}
-        role="status"
-      >
-        Loading audit events…
-      </div>
-    );
-  }
-
-  if (isError) {
-    return (
-      <div
-        className="rounded-md border p-6 text-sm"
-        style={{ background: "var(--surface)", borderColor: "var(--danger)", color: "var(--danger)" }}
-        role="alert"
-      >
-        Audit events could not be loaded.
-      </div>
-    );
-  }
-
-  if (events.length === 0) {
-    return (
-      <div
-        className="rounded-md border p-8 text-center"
-        style={{ background: "var(--surface)", borderColor: "var(--border)" }}
-      >
-        <p className="text-sm font-medium" style={{ color: "var(--text)" }}>
-          No audit events found
-        </p>
-        <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
-          Try changing the filters or check back after the next workspace action.
-        </p>
-      </div>
-    );
-  }
+export function AuditTable({ events, isLoading, onSelectEvent }: AuditTableProps) {
+  const columns: Column<AuditEvent>[] = [
+    {
+      header: "Event",
+      cell: (event) => (
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-[10px] bg-parchment text-primary border border-hairline shrink-0">
+            {EVENT_ICONS[event.event_type] || <Hash className="w-3.5 h-3.5" />}
+          </div>
+          <div>
+            <span className="font-semibold text-ink text-sm block">
+              {EVENT_LABELS[event.event_type] || event.event_type}
+            </span>
+            {event.detail && (
+              <span className="text-[11px] text-ink-muted-48 font-normal block max-w-xs truncate">
+                {event.detail}
+              </span>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      header: "Document",
+      cell: (event) => (
+        <div>
+          <span className="text-sm text-ink font-normal block">{event.file_name || event.file_id}</span>
+          <span className="text-[11px] text-ink-muted-48 font-mono block">{event.file_id}</span>
+        </div>
+      ),
+    },
+    {
+      header: "Actor",
+      cell: (event) => (
+        <div>
+          <span className="text-sm text-ink font-normal block">{event.actor_name || "—"}</span>
+          <span className="text-[11px] text-ink-muted-48 font-mono block">{shortHash(event.actor)}</span>
+        </div>
+      ),
+    },
+    {
+      header: "Timestamp",
+      className: "whitespace-nowrap",
+      cell: (event) => (
+        <span className="text-xs text-ink-muted-48 font-normal whitespace-nowrap">
+          {formatDate(event.timestamp)}
+        </span>
+      ),
+    },
+    {
+      header: "Tx Hash",
+      className: "whitespace-nowrap",
+      cell: (event) =>
+        event.tx_hash ? (
+          <span className="inline-flex items-center gap-1.5 font-mono text-xs text-primary bg-primary/8 px-2 py-0.5 rounded-[6px] border border-primary/15 whitespace-nowrap cursor-pointer hover:bg-primary/15 transition-colors duration-150">
+            {shortHash(event.tx_hash)}
+            <ExternalLink className="w-3 h-3 shrink-0" />
+          </span>
+        ) : (
+          <span className="text-xs text-ink-muted-48 font-normal">—</span>
+        ),
+    },
+    {
+      header: "Status",
+      className: "whitespace-nowrap",
+      cell: (event) => {
+        const v = event.verification?.toLowerCase();
+        if (v === "verified") return <Badge variant="verified">Verified</Badge>;
+        if (v === "tampered") return <Badge variant="tampered">Tampered</Badge>;
+        return <Badge variant="pending">Pending</Badge>;
+      },
+    },
+  ];
 
   return (
-    <div className="overflow-x-auto rounded-md border" style={{ borderColor: "var(--border)" }}>
-      <table className="min-w-[900px] w-full text-left text-sm">
-        <caption className="sr-only">Audit events</caption>
-        <thead style={{ background: "var(--surface-2)", color: "var(--text-muted)" }}>
-          <tr className="text-xs uppercase tracking-wide">
-            <th className="px-4 py-3 font-medium">Event</th>
-            <th className="px-4 py-3 font-medium">Actor</th>
-            <th className="px-4 py-3 font-medium">Resource</th>
-            <th className="px-4 py-3 font-medium">Timestamp</th>
-            <th className="px-4 py-3 font-medium">Outcome</th>
-            <th className="px-4 py-3 font-medium">Transaction</th>
-          </tr>
-        </thead>
-        <tbody style={{ background: "var(--surface)", color: "var(--text)" }}>
-          {events.map((event) => (
-            <tr key={event.id} className="border-t" style={{ borderColor: "var(--border)" }}>
-              <td className="px-4 py-4 font-medium">{formatAction(event.event_type)}</td>
-              <td className="px-4 py-4">
-                <WalletChip address={event.actor} />
-              </td>
-              <td className="px-4 py-4 font-mono text-xs">{event.file_id}</td>
-              <td className="whitespace-nowrap px-4 py-4 text-xs" style={{ color: "var(--text-muted)" }}>
-                {formatTimestamp(event.timestamp ?? Date.parse(event.created_at ?? "") / 1000)}
-              </td>
-              <td className="px-4 py-4">
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-xs font-medium"
-                  style={{ background: "var(--surface-2)", color: verificationColor[event.verification ?? "pending"] }}
-                >
-                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: verificationColor[event.verification ?? "pending"] }} />
-                  {verificationLabel[event.verification ?? "pending"]}
-                </span>
-              </td>
-              <td className="px-4 py-4">
-                <TxLink txHash={event.tx_hash} pending={event.verification === "pending"} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    <DataTable
+      columns={columns}
+      data={events}
+      keyExtractor={(e) => e.id}
+      isLoading={isLoading}
+      emptyState={
+        <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+          <div className="w-10 h-10 rounded-full bg-parchment flex items-center justify-center text-ink-muted-48 border border-hairline">
+            <ScrollText className="w-5 h-5" />
+          </div>
+          <p className="text-sm font-semibold text-ink">No audit trail records found</p>
+          <p className="text-xs text-ink-muted-48 max-w-sm">
+            All document uploads, permission grants, and hash verifications are immutably logged here.
+          </p>
+        </div>
+      }
+    />
   );
 }
 
-function formatAction(action: string): string {
-  return action
-    .split("_")
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(" ");
-}
-
-function formatTimestamp(timestamp: number): string {
-  return `${new Date(timestamp * 1000).toISOString().replace("T", " ").slice(0, 16)} UTC`;
-}
+export default AuditTable;

@@ -1,60 +1,177 @@
 "use client";
+import React, { useState, useEffect } from "react";
+import { AuditTable, AuditEvent } from "@/components/features/audit/audit-table";
+import { AuditFilters, AuditFilterValues } from "@/components/features/audit/audit-filters";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ScrollText, ShieldCheck, Clock, AlertTriangle, AlertCircle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api/client";
+import { useToast } from "@/components/ui/toast";
 
-import { useMemo, useState } from "react";
-import AuditFilters from "@/components/features/audit/audit-filters";
-import AuditTable from "@/components/features/audit/audit-table";
-import { useAudit } from "@/lib/api/hooks/useAudit";
+export default function AuditPage() {
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<AuditFilterValues>({
+    search: "",
+    eventType: "all",
+    verification: "all",
+  });
+  const { toast } = useToast();
 
-export default function Page() {
-  const { data: events = [], isLoading, isError } = useAudit();
-  const [query, setQuery] = useState("");
-  const [verification, setVerification] = useState<"all" | "verified" | "pending" | "tampered">("all");
-  const [action, setAction] = useState("all");
+  const loadAudit = async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const data = await api<AuditEvent[]>("/audit");
+      setEvents(data);
+    } catch (err) {
+      console.error(err);
+      setLoadError("Failed to fetch audit events from API.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const actions = useMemo(
-    () => Array.from(new Set(events.map((event) => event.event_type))).sort(),
-    [events]
-  );
+  useEffect(() => {
+    loadAudit();
+  }, []);
 
-  const filteredEvents = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
-    return events.filter((event) => {
-      const matchesQuery =
-        !normalizedQuery ||
-        event.actor.toLowerCase().includes(normalizedQuery) ||
-        event.file_id?.toLowerCase().includes(normalizedQuery) ||
-        event.event_type.toLowerCase().includes(normalizedQuery);
-      const matchesVerification = verification === "all" || event.verification === verification;
-      const matchesAction = action === "all" || event.event_type === action;
-      return matchesQuery && matchesVerification && matchesAction;
-    });
-  }, [action, events, query, verification]);
+  // Client-side filtering
+  const filteredEvents = events.filter((e) => {
+    const matchesSearch =
+      filters.search === "" ||
+      (e.file_name || "").toLowerCase().includes(filters.search.toLowerCase()) ||
+      (e.actor_name || "").toLowerCase().includes(filters.search.toLowerCase()) ||
+      e.actor.toLowerCase().includes(filters.search.toLowerCase()) ||
+      e.file_id.toLowerCase().includes(filters.search.toLowerCase()) ||
+      (e.tx_hash || "").toLowerCase().includes(filters.search.toLowerCase()) ||
+      (e.detail || "").toLowerCase().includes(filters.search.toLowerCase());
+
+    const matchesType = filters.eventType === "all" || e.event_type === filters.eventType;
+    const matchesVerification = filters.verification === "all" || e.verification === filters.verification;
+
+    return matchesSearch && matchesType && matchesVerification;
+  });
+
+  // Summary statistics
+  const verifiedCount = events.filter((e) => e.verification === "verified").length;
+  const pendingCount = events.filter((e) => e.verification === "pending").length;
+  const tamperedCount = events.filter((e) => e.verification === "tampered").length;
+
+  // Export CSV
+  const handleExportCSV = () => {
+    if (filteredEvents.length === 0) {
+      toast("error", "No Data", "No events to export.");
+      return;
+    }
+
+    const headers = ["ID", "Event Type", "File", "Actor", "Actor Name", "Tx Hash", "Verification", "Timestamp", "Detail"];
+    const rows = filteredEvents.map((e) => [
+      e.id,
+      e.event_type,
+      e.file_name || e.file_id,
+      e.actor,
+      e.actor_name || "",
+      e.tx_hash || "",
+      e.verification,
+      new Date(e.timestamp * 1000).toISOString(),
+      e.detail || "",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `overvault-audit-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast("success", "CSV Exported", `Exported ${filteredEvents.length} audit events`);
+  };
 
   return (
-    <div className="space-y-6">
-      <header>
-        <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-          Proof of workspace activity
+    <div className="space-y-6 animate-fade-in">
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-bold text-ink tracking-tight flex items-center gap-2">
+          <ScrollText className="w-5 h-5 text-primary" /> Audit Trail
+        </h2>
+        <p className="text-xs text-ink-muted-48 mt-0.5 font-normal">
+          Tamper-proof chronological record of all document actions with on-chain verification links.
         </p>
-        <p className="mt-1 text-2xl font-semibold" style={{ color: "var(--text)" }}>
-          Audit trail
-        </p>
-        <p className="mt-2 max-w-2xl text-sm" style={{ color: "var(--text-muted)" }}>
-          Review who changed each resource, when it happened, and whether the chain record is verified.
-        </p>
-      </header>
+      </div>
 
+      {loadError && (
+        <div className="p-4 rounded-[12px] bg-danger/10 border border-danger/20 flex items-center justify-between text-xs text-ink" role="alert">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 text-danger shrink-0" />
+            <span>{loadError}</span>
+          </div>
+          <Button size="sm" variant="secondary" onClick={loadAudit} className="text-xs h-7">
+            Retry Connection
+          </Button>
+        </div>
+      )}
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card className="border-hairline">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-[10px] bg-success/10 text-success border border-success/20">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-2xl font-bold text-ink">{verifiedCount}</span>
+              <span className="text-xs text-ink-muted-48 font-normal block">Verified on chain</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-hairline">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-[10px] bg-warning/10 text-warning border border-warning/20">
+              <Clock className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-2xl font-bold text-ink">{pendingCount}</span>
+              <span className="text-xs text-ink-muted-48 font-normal block">Pending confirmation</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-hairline">
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2.5 rounded-[10px] bg-danger/10 text-danger border border-danger/20">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <span className="text-2xl font-bold text-ink">{tamperedCount}</span>
+              <span className="text-xs text-ink-muted-48 font-normal block">Integrity alerts</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Filter Bar */}
       <AuditFilters
-        query={query}
-        verification={verification}
-        actions={actions}
-        action={action}
-        onQueryChange={setQuery}
-        onVerificationChange={setVerification}
-        onActionChange={setAction}
+        filters={filters}
+        onFiltersChange={setFilters}
+        onRefresh={loadAudit}
+        onExportCSV={handleExportCSV}
+        totalEvents={filteredEvents.length}
       />
 
-      <AuditTable events={filteredEvents} isLoading={isLoading} isError={isError} />
+      {/* Audit Events Table */}
+      <AuditTable events={filteredEvents} isLoading={isLoading} />
     </div>
   );
 }

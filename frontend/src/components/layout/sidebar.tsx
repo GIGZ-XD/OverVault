@@ -14,8 +14,10 @@ import {
   History,
   HardDrive,
   Cpu,
+  Server,
   X,
 } from "lucide-react";
+import { useDashboardSummary } from "@/lib/api/hooks/useDashboard";
 
 export interface SidebarProps {
   mobileOpen?: boolean;
@@ -24,11 +26,14 @@ export interface SidebarProps {
 
 export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
+  const { data: summary } = useDashboardSummary();
+  const pendingCount = summary?.pending_approvals ?? 0;
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "My Files", href: "/files", icon: FileText },
     { label: "Shared with me", href: "/shared", icon: Share2 },
+    { label: "Storage Nodes", href: "/nodes", icon: Server },
     { label: "Approvals", href: "/approvals", icon: CheckSquare },
     { label: "Audit Trail", href: "/audit", icon: History },
     { label: "Access Control (admin)", href: "/access", icon: Users },
@@ -95,9 +100,9 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
                   )}
                 />
                 <span>{item.label}</span>
-                {item.href === "/approvals" && (
+                {item.href === "/approvals" && pendingCount > 0 && (
                   <span className="ml-auto px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-warning/20 text-warning">
-                    1
+                    {pendingCount}
                   </span>
                 )}
               </Link>

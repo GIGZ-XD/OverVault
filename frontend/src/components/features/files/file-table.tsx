@@ -174,6 +174,17 @@ export function FileTable({
       keyExtractor={(f) => f.id}
       isLoading={isLoading}
       onRowClick={onSelectFile}
+      emptyState={
+        <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+          <div className="w-10 h-10 rounded-full bg-parchment flex items-center justify-center text-ink-muted-48 border border-hairline">
+            <FileText className="w-5 h-5" />
+          </div>
+          <p className="text-sm font-semibold text-ink">No documents found in vault</p>
+          <p className="text-xs text-ink-muted-48 max-w-sm">
+            Upload your first encrypted document to generate on-chain SHA-256 integrity proofs.
+          </p>
+        </div>
+      }
     />
   );
 }

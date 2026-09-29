@@ -10,6 +10,8 @@ import { config } from "@/lib/config";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api/client";
 
+import { setToken } from "@/lib/api/token";
+
 export default function SettingsPage() {
   const [apiMode, setApiMode] = useState(config.apiMode);
   const [walletMode, setWalletMode] = useState(config.walletMode);
@@ -49,9 +51,20 @@ export default function SettingsPage() {
     toast("success", "Configuration Saved", "Updated API & wallet preferences.");
   };
 
-  const handleSwitchUser = (userId: string) => {
+  const handleSwitchUser = async (userId: string) => {
     setActiveUser(userId);
     const u = users.find((item) => item.id === userId);
+    try {
+      const res = await api<{ access_token: string }>("/auth/dev-login", {
+        method: "POST",
+        body: JSON.stringify({ user_id: userId }),
+      });
+      if (res?.access_token) {
+        setToken(res.access_token);
+      }
+    } catch (e) {
+      console.warn("Dev login error:", e);
+    }
     toast("success", "Active User Switched", `Now viewing vault as ${u?.name} (${u?.role})`);
   };
 

@@ -17,8 +17,8 @@ export interface DiffViewerProps {
 
 export function DiffViewer({ lines, oldTitle = "Previous Version", newTitle = "Proposed Change", className }: DiffViewerProps) {
   return (
-    <div className={cn("rounded-lg border border-border bg-surface-2/40 overflow-hidden font-mono text-xs", className)}>
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-surface-3/40 text-text-muted text-[11px] font-semibold">
+    <div className={cn("rounded-lg border border-hairline bg-surface-2/40 overflow-hidden font-mono text-xs", className)}>
+      <div className="flex items-center justify-between px-4 py-2 border-b border-hairline bg-parchment/40 text-ink-muted-48 text-[11px] font-semibold">
         <span>{oldTitle}</span>
         <span>→</span>
         <span>{newTitle}</span>
@@ -31,13 +31,13 @@ export function DiffViewer({ lines, oldTitle = "Previous Version", newTitle = "P
               "flex items-center px-3 py-1 font-mono leading-relaxed",
               line.type === "add" && "bg-emerald-500/10 text-emerald-300",
               line.type === "remove" && "bg-rose-500/10 text-rose-300",
-              line.type === "normal" && "text-text-muted"
+              line.type === "normal" && "text-ink-muted-48"
             )}
           >
-            <span className="w-8 text-text-dim text-[10px] select-none text-right pr-2">
+            <span className="w-8 text-ink-muted-48 text-[10px] select-none text-right pr-2">
               {line.lineNumberOld || " "}
             </span>
-            <span className="w-8 text-text-dim text-[10px] select-none text-right pr-3 border-r border-border/40 mr-3">
+            <span className="w-8 text-ink-muted-48 text-[10px] select-none text-right pr-3 border-r border-border/40 mr-3">
               {line.lineNumberNew || " "}
             </span>
             <span className="w-4 select-none shrink-0 font-bold">

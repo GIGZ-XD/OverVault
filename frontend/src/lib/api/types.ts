@@ -1,15 +1,21 @@
-/** Frontend shapes matching the merged backend Pydantic schemas. */
+/**
+ * Mirrors the backend's Pydantic schemas exactly (field names/casing match the
+ * JSON the API sends, which is the resolved contract from ADR 0005). Kept as
+ * plain interfaces - no runtime validation library is in package.json yet.
+ * Regenerate/diff this by hand whenever specs/openapi.yaml changes.
+ */
 
 export type Role = "employee" | "manager" | "admin" | "auditor";
-export type ProtectionMode = "none" | "append_only" | "read_only" | "read-only" | "append-only";
-export type PermissionLevel = "read" | "write" | "manage" | "append" | "admin";
+export type ProtectionMode = "none" | "append_only" | "read_only";
+export type PermissionLevel = "read" | "write" | "manage";
 export type ApprovalStatus = "pending" | "approved" | "rejected";
 export type PermissionStatus = "active" | "revoked" | "expired";
-export type Verification = "verified" | "pending" | "tampered";
+
+// ---- auth ----
 
 export interface UserOut {
   id: string;
-  email?: string;
+  email: string;
   name: string;
   role: Role;
   wallet_address: string | null;
@@ -18,7 +24,7 @@ export interface UserOut {
 export interface TokenResponse {
   access_token: string;
   token_type: string;
-  user?: UserOut;
+  user: UserOut;
 }
 
 export interface WalletNonceResponse {
@@ -28,8 +34,10 @@ export interface WalletNonceResponse {
 
 export interface WalletVerifyBody {
   address: string;
-  signature: string;
+  signature: string; // no nonce field - the backend looks it up by address (wallet_auth.md 2.2)
 }
+
+// ---- files ----
 
 export interface FileOut {
   id: string;
@@ -37,9 +45,9 @@ export interface FileOut {
   owner: string;
   size: number;
   protection: ProtectionMode;
-  verification: string;
+  verification: string; // "verified" - self-consistency only until the chain layer lands, see ADR 0005
   hash: string;
-  ownership_tx: string | null;
+  ownership_tx: string | null; // always null until Sriganesh's ChainService is wired in
   content_type: string;
   current_version: number;
   approved_version: number | null;
@@ -48,12 +56,10 @@ export interface FileOut {
   my_access: PermissionLevel | null;
 }
 
-export type FileSummary = FileOut;
-
 export interface VerifyResult {
   file_id: string;
   local_hash: string;
-  chain_hash: string;
+  chain_hash: string; // mirrors local_hash until the chain layer lands
   verified: boolean;
   timestamp: string;
 }
@@ -63,9 +69,11 @@ export interface DashboardSummary {
   verified_files: number;
   pending_approvals: number;
   active_permissions: number;
-  integrity_score: string;
-  blockchain_status: string;
+  integrity_score: string; // e.g. "100%"
+  blockchain_status: string; // e.g. "connected (fake chain - dev)"
 }
+
+// ---- versions ----
 
 export interface VersionOut {
   id: string;
@@ -79,12 +87,14 @@ export interface VersionOut {
   created_at: string;
 }
 
+// ---- permissions ----
+
 export interface PermissionOut {
   id: string;
   file_id: string;
   grantee: string;
   permission: PermissionLevel;
-  status: PermissionStatus | string;
+  status: PermissionStatus;
   expires_at: string | null;
   granted_by: string;
   revoked_at: string | null;
@@ -96,8 +106,10 @@ export interface GrantRequestBody {
   grantee: string;
   permission: PermissionLevel;
   expires_at?: string | null;
-  signature?: string | null;
+  signature?: string | null; // Pannaga's signing flow fills this in
 }
+
+// ---- approvals ----
 
 export interface ApprovalOut {
   id: string;
@@ -122,23 +134,12 @@ export interface ApprovalSubmitBody {
 export interface ApprovalDecisionBody {
   decision: "approved" | "rejected";
   comment?: string;
-  signature?: string | null;
+  signature?: string | null; // Pannaga's signing flow fills this in
 }
 
-export interface AuditEvent {
-  id: string;
-  event_type: string;
-  reference_id?: string;
-  file_id?: string;
-  actor: string;
-  payload?: Record<string, unknown> | null;
-  status?: string;
-  verification?: Verification;
-  tx_hash: string | null;
-  created_at?: string;
-  timestamp?: number;
-}
+// ---- errors ----
 
+/** Shape of the JSON body FastAPI's DomainError handler returns (main.py). */
 export interface ApiErrorBody {
   detail: string;
   code?: string;

@@ -22,13 +22,13 @@ async def lifespan(app: FastAPI):
     if s.auth_mode == "dev":
         with SessionLocal() as db:
             dev_auth.seed_dev_users(db)
-    expiry_task = asyncio.create_task(expiry_job.run_forever(s.expiry_job_interval_seconds)) if s.run_expiry_job else None
-    outbox_task = asyncio.create_task(outbox_worker.run_forever(s.outbox_worker_interval_seconds)) if s.run_outbox_worker else None
+    tasks = []
+    if s.run_expiry_job:
+        tasks.append(asyncio.create_task(expiry_job.run_forever(s.expiry_job_interval_seconds)))
+    tasks.append(asyncio.create_task(outbox_worker.run_forever(interval_seconds=5)))
     yield
-    if expiry_task:
-        expiry_task.cancel()
-    if outbox_task:
-        outbox_task.cancel()
+    for t in tasks:
+        t.cancel()
 
 
 def create_app() -> FastAPI:

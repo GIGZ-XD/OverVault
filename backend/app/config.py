@@ -29,27 +29,16 @@ class Settings(BaseSettings):
     # Workers
     run_expiry_job: bool = True
     expiry_job_interval_seconds: int = 60
-    run_outbox_worker: bool = True
-    outbox_worker_interval_seconds: int = 5
 
-    # Chain selection: fake | demo | real | mst | testnet
-    chain_mode: str = "fake"
+    # Chain selection is read by Sriganesh's layer; the backend core never calls it.
+    chain_mode: str = "fake"  # fake | demo | real
 
-    # MST Blockchain configuration
-    mst_rpc_url: str = ""
-    mst_chain_id: str = "91562037"
-    mst_backend_signer_key: str = ""
-    mstscan_base_url: str = "https://testnet.mstscan.com"
-
-    # EVM aliases & Contract addresses
-    evm_rpc_url: str = ""
-    evm_private_key: str = ""
-    contract_address_audit: str = ""
-    contract_address_integrity: str = ""
-    contract_address_ownership: str = ""
-    contract_address_permission: str = ""
-
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+    ]
 
 
 @lru_cache

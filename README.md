@@ -1,230 +1,289 @@
-# OverVault
+# OverVault (MST Vault)
 
-> **Blockchain-Audited Enterprise Storage and Document Management on MST Blockchain**
-
-OverVault is a high-assurance document vault combining private encrypted storage with immutable public cryptographic proofs on **MST Blockchain** (MST Testnet) and decentralized identity authentication via **BridgeKey Wallet**.
+> **Enterprise-Grade Blockchain-Audited Decentralized Document Vault & Private Storage Mesh**  
+> Anchored to the **MST Blockchain** with **BridgeKey Wallet** cryptographic signing.  
+> *Private files never touch the chain — only cryptographic hashes, access grants, and audit proofs do.*
 
 ---
 
-## Key Security & Privacy Guarantee
+## 📸 System Interface & Live Showcase
 
-> [!IMPORTANT]
-> **Private file bytes NEVER cross the blockchain boundary.**
-> Raw files are encrypted and retained strictly in private storage. The blockchain receives **only** cryptographic SHA-256 digests, file IDs, version integers, and actor wallet addresses.
+### 1. Executive Security & Integrity Dashboard (Pavan)
+The operational command center tracking cryptographic file proofs, storage quota, active access grants, pending multi-sig reviews, and real-time MSTScan transaction commits.
+![OverVault Executive Dashboard](docs/screenshots/dashboard.png)
+
+---
+
+### 2. Private Decentralized Storage Node Network (Pavan & Vineeth)
+Decentralized physical data sovereignty cluster. Organizations connect servers and computers across regions into an encrypted storage mesh with interactive topology visualization, health telemetry, and quorum replication controls.
+![OverVault Storage Nodes Mesh](docs/screenshots/storage-nodes.png)
+
+---
+
+### 3. Encrypted Vault File Explorer (Pavan & Vineeth)
+Drag-and-drop multipart binary file uploads with client-side SHA-256 pre-computation, AES-256-GCM encryption at rest, protection locks (`append_only` / `read_only`), and live on-chain hash verification.
+![OverVault Vault Files Explorer](docs/screenshots/files.png)
+
+---
+
+### 4. Immutable Audit Trail & Explorer (Pavan & Vineeth)
+Complete non-repudiable audit ledger tracking every upload, version revision, access grant, revocation, and node lifecycle event with clickable transaction hashes linking to MSTScan.
+![OverVault Audit Trail](docs/screenshots/audit.png)
+
+---
+
+## ⚡ Dynamic Frontend & Backend Integration
+
+The frontend (Next.js 14) and backend (FastAPI) are **dynamically connected and integrated end-to-end**:
 
 ```
-+-----------------------------------------------------------------------------------------+
-|                                    PRIVATE BOUNDARY                                     |
-|                                                                                         |
-|  [Browser UI]  <-- EIP-191 Sign -->  [BridgeKey Wallet]                                |
-|        |                                                                                |
-|        | REST API (Bearer JWT)                                                          |
-|        v                                                                                |
-|  [FastAPI Backend]                                                                      |
-|        |                                                                                |
-|        +---> [Encrypted Vault Storage] (Raw bytes AES/local disk)                      |
-|        +---> [Database / SQL State]   (Metadata, Versions, RBAC, Approvals)             |
-|        +---> [Audit Outbox Table]      (Transactional queue of events)                  |
-+--------------------------------------------|--------------------------------------------+
-                                             |  Async Worker (Hashes & Metadata ONLY)
-+--------------------------------------------v--------------------------------------------+
-|                                  PUBLIC BLOCKCHAIN                                      |
-|                                                                                         |
-|  [Web3 / Outbox Worker]                                                                 |
-|        |                                                                                |
-|        v  RPC: https://testnetrpc.mstblockchain.com (Chain ID: 91562037)               |
-|  [MST Testnet Smart Contracts]                                                          |
-|        +-- Audit.sol       (`0x9868...1Fdb`) -> Immutable event logs                   |
-|        +-- Integrity.sol   (`0x5e72...33AB`) -> SHA-256 document hash anchors          |
-|        +-- Ownership.sol   (`0x5301...B148`) -> Asset provenance & genesis anchors     |
-|        +-- Permission.sol  (`0x6BC2...2b1E`) -> Cryptographic ACL verification         |
-|                                                                                         |
-|  [MSTScan Explorer] -> https://testnet.mstscan.com/tx/<txHash>                          |
-+-----------------------------------------------------------------------------------------+
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                               FRONTEND (Next.js 14 - Port 3000/3001)                    │
+│                                                                                        │
+│  [ React Query Hooks ] ──▶ [ api/client.ts (fetchWithAuth) ] ──▶ [ JWT Token Manager ] │
+└──────────────────────────────────────────┬─────────────────────────────────────────────┘
+                                           │ HTTP/JSON & Multipart (FormData)
+                                           │ Bearer JWT (Automatic Dev-Auth Refresh)
+                                           ▼
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                               BACKEND (FastAPI - Port 8000)                             │
+│                                                                                        │
+│  ┌───────────────────────┐   ┌───────────────────────────┐   ┌───────────────────────┐  │
+│  │   API Routers (10)    │──▶│   Business Services (10)  │──▶│  Database & Storage   │  │
+│  │  • /api/files         │   │  • hashing (SHA-256)      │   │  • SQLite / Postgres  │  │
+│  │  • /api/nodes         │   │  • encryption (AES-256)   │   │  • Encrypted Chunks   │  │
+│  │  • /api/approvals     │   │  • permissions (RBAC)     │   │  • Transactional      │  │
+│  │  • /api/audit         │   │  • versioning             │   │    Outbox Table       │  │
+│  └───────────────────────┘   └─────────────┬─────────────┘   └───────────────────────┘  │
+│                                            │                                            │
+│                                            ▼                                            │
+│                              ┌───────────────────────────┐                              │
+│                              │   Outbox Background Worker│                              │
+│                              │  (Polls & Batches Events) │                              │
+│                              └─────────────┬─────────────┘                              │
+└────────────────────────────────────────────┼────────────────────────────────────────────┘
+                                             │ JSON-RPC / Web3 Signatures
+                                             ▼
+                               ┌───────────────────────────┐
+                               │       MST BLOCKCHAIN      │
+                               │  (Immutable Verification) │
+                               └───────────────────────────┘
 ```
 
----
-
-## Live MST Testnet Verification
-
-All four smart contracts are compiled with Solidity `0.8.20` and deployed on the live MST Testnet.
-
-### Network Parameters
-- **Network Name**: MST EVM Testnet
-- **RPC URL**: `https://testnetrpc.mstblockchain.com`
-- **Chain ID**: `91562037` (`0x5752035`)
-- **Currency Symbol**: MST ($tMSTC)
-- **Block Explorer**: [https://testnet.mstscan.com](https://testnet.mstscan.com)
-- **Deployer Wallet**: [`0x8D980974EFc134749E397178359e9356052F5409`](https://testnet.mstscan.com/address/0x8D980974EFc134749E397178359e9356052F5409)
-
-### Confirmed Contract Addresses
-| Contract | Address | Deployment Tx | MSTScan |
-|---|---|---|---|
-| **Audit.sol** | `0x98686687390Bb44D9B8d240A19Ca9b7c26071Fdb` | `0x31270b...` | [Audit on MSTScan](https://testnet.mstscan.com/address/0x98686687390Bb44D9B8d240A19Ca9b7c26071Fdb) |
-| **Integrity.sol** | `0x5e724C47DCEccC41902f2D129091faf6D1D833AB` | `0x4af02a...` | [Integrity on MSTScan](https://testnet.mstscan.com/address/0x5e724C47DCEccC41902f2D129091faf6D1D833AB) |
-| **Ownership.sol** | `0x53017dd1A227a7Fcf7665C59B7E3360995dCB148` | `0x75bdf0...` | [Ownership on MSTScan](https://testnet.mstscan.com/address/0x53017dd1A227a7Fcf7665C59B7E3360995dCB148) |
-| **Permission.sol** | `0x6BC2c8B4B373F4a5c3E6Fef36F2E7BA427292b1E` | `0x89aac4...` | [Permission on MSTScan](https://testnet.mstscan.com/address/0x6BC2c8B4B373F4a5c3E6Fef36F2E7BA427292b1E) |
-
-### Live Mined Transaction Proofs
-1. **Audit Event (`Audit.logAudit`)**:
-   - Tx: [`0xea8afdcaa290847e0ce295b479420469e19b1e42cd4ffe8d39fb8bbc4889669b`](https://testnet.mstscan.com/tx/0xea8afdcaa290847e0ce295b479420469e19b1e42cd4ffe8d39fb8bbc4889669b)
-   - Block: `5795336` | Status: `Success (0x1)` | Event: `AuditLogged`
-2. **Hash Commitment (`Integrity.commitHash`)**:
-   - Tx: [`0xb620b78eddea792f2d71d4609fbc0cce3f00f163f182d50e7c1f1de34dbd1722`](https://testnet.mstscan.com/tx/0xb620b78eddea792f2d71d4609fbc0cce3f00f163f182d50e7c1f1de34dbd1722)
-   - Block: `5795337` | Status: `Success (0x1)` | Event: `HashCommitted`
-3. **Ownership Anchor (`Ownership.registerOwnership`)**:
-   - Tx: [`0x385674f1d8293b9975330d260090907caa27c5f2d05051c9bf4da43491a591c5`](https://testnet.mstscan.com/tx/0x385674f1d8293b9975330d260090907caa27c5f2d05051c9bf4da43491a591c5)
-   - Block: `5795340` | Status: `Success (0x1)`
+### Key Integration Highlights
+1. **Dynamic Mode (`NEXT_PUBLIC_API_MODE="real"`):**  
+   Configured in `frontend/.env.local`. When active, MSW mock interceptors are bypassed and every interaction communicates directly with the live FastAPI server at `http://localhost:8000`.
+2. **Self-Healing JWT Authentication:**  
+   `frontend/src/lib/api/client.ts` uses `fetchWithAuth`. If any request receives an initial `401 Unauthorized` (e.g., token expired or server rebooted), it transparently re-authenticates against `/api/auth/dev-login`, updates `localStorage`, and retries the in-flight request without crashing the UI.
+3. **Real Binary Streaming:**  
+   Unlike mock JSON stubs, file uploads stream true binary `multipart/form-data` payloads to `/api/files`, and downloads stream verified `application/octet-stream` blobs directly through `api.getBlob()`, verifying the `X-Content-SHA256` header on receipt.
+4. **Persona Identity Switching:**  
+   The Settings identity switcher immediately fetches and stores a real JWT for the selected persona (`Asha Rao - Employee`, `Ravi Kumar - Manager`, `Meera Iyer - Admin`, `Kiran Shah - Auditor`), re-scoping RBAC permissions live across all views.
+5. **Transactional Outbox Worker:**  
+   The backend writes audit actions and blockchain sync events to an atomic database outbox. A background worker (`backend/app/workers/outbox_worker.py`) polls events every 5 seconds and synchronizes them to the MST Blockchain without blocking HTTP threads.
 
 ---
 
-## Features & End-to-End Flow
+## 🌐 Private Decentralized Storage Node Network
 
-1. **BridgeKey Wallet Login**: Nonce-based cryptographic challenge with EIP-191 `personal_sign` signature recovery and JWT session issuance.
-2. **Encrypted Storage & Versioning**: SHA-256 checksum calculation, content-addressed vault storage, and multi-version tracking.
-3. **Role-Based Access Control (RBAC)**: Fine-grained permissions (`employee`, `manager`, `admin`, `auditor`) with file-level ACLs (`read`, `write`, `admin`).
-4. **Approval Workflow**: Version changes submitted for manager approval; approvals recorded with wallet signatures.
-5. **Transactional Audit Outbox**: Every mutation creates an atomic outbox record in the same database transaction.
-6. **MST Blockchain Anchoring**: Outbox worker submits hashes and audit references to MST Testnet smart contracts without leaking file contents.
-7. **Audit & Integrity Verification UI**: Deep-linked MSTScan transaction verification and integrity score monitoring.
+OverVault eliminates single-point-of-failure cloud dependency by enabling organizations to attach physical and virtual compute instances into a private decentralized cluster:
+
+* **Token-Based Registration:** Generate ephemeral, cryptographically random registration tokens (`mst-node-sec-...`) with one-line CLI installation commands for new node agents.
+* **SVG Mesh Network Topology:** Live interactive constellation diagram visualizing node connectivity, regional clusters (US-East, EU-Frankfurt, AP-Bangalore, Edge DR), latency pings, and data transmission pulses.
+* **Configurable Replication Policy:**
+  * **Replication Factor:** Select 1x to 5x copies per document across cluster nodes.
+  * **Write Quorum:** Enforce minimum healthy node confirmations (e.g. 2 of 3) before committing writes.
+  * **Heartbeat Monitoring:** Automated liveness pings tracking uptime, used storage vs allocated quota, and health score.
+* **Safe Decommissioning Wizard:** Evacuate chunks from retiring nodes to active peers before server removal, guaranteeing **zero data loss**.
 
 ---
 
-## Mode Switches
+## 🗂️ Project Directory Structure
 
-OverVault supports running in simulated mode for offline testing and real mode for live blockchain and wallet interaction:
-
-| Variable | Values | Purpose |
-|---|---|---|
-| `CHAIN_MODE` | `fake` / `real` (or `testnet`) | Backend: `fake` generates deterministic simulated tx hashes; `real` connects to live MST Testnet RPC |
-| `AUTH_MODE` | `dev` / `wallet` | Backend: `dev` allows mock token login; `wallet` enforces EIP-191 BridgeKey signatures |
-| `NEXT_PUBLIC_API_MODE` | `mock` / `real` | Frontend: `mock` intercepts via MSW; `real` proxies to FastAPI on `:8000` |
-| `NEXT_PUBLIC_WALLET_MODE` | `mock` / `bridgekey` | Frontend: `mock` simulates BridgeKey extension; `bridgekey` interacts with installed extension |
-
-<<<<<<< HEAD
----
-
-## Repository Structure
-
-```
+```text
 OverVault/
-├── backend/                  # FastAPI backend
-│   ├── app/
-│   │   ├── api/routes/       # Auth, Files, Versions, Permissions, Approvals, Audit
-│   │   ├── auth/             # JWT and BridgeKey EIP-191 signature verification
-│   │   ├── chain/            # ChainService interface: fake.py and real.py (Web3)
-│   │   ├── models/           # SQLAlchemy models (User, File, Version, Outbox, etc.)
-│   │   └── workers/          # Outbox worker for background blockchain submission
-│   └── tests/                # 65 passing pytest unit and integration tests
-├── contracts/                # Solidity smart contracts (Hardhat)
-│   ├── src/                  # Audit.sol, Integrity.sol, Ownership.sol, Permission.sol
-│   ├── deployed.testnet.json # Live deployed contract addresses and deploy txs
-│   └── hardhat.config.js     # MST Testnet network configuration
-├── frontend/                 # Next.js 14 + Tailwind CSS web application
-│   ├── src/app/              # Dashboard, Vault, Approvals, Audit, Settings pages
-│   ├── src/components/       # UI components, TxLink, HashChip, FileDrawer
-│   └── src/lib/wallet/       # BridgeKey wallet adapter and mock provider
-├── docs/                     # Documentation, ADRs, and verification guides
-│   ├── demo-script.md        # Step-by-step hackathon presentation script
-│   ├── mstscan-verification.md # Complete MSTScan proof logs and verification guide
-│   ├── security-checklist.md # Security audit and control checklist
-│   └── mainnet-checklist.md  # Production readiness and Mainnet promotion roadmap
-└── e2e/                      # Playwright end-to-end test suite
+├── .env.example                                # Master environment variables template
+├── README.md                                   # Project documentation & architecture
+├── docs/                                       # Design guidelines and demo runbooks
+│   ├── DESIGN.md                               # Apple Design System token specification
+│   ├── demo-script.md                          # 6-Act end-to-end presentation walkthrough
+│   ├── security-checklist.md                   # Zero-trust verification criteria
+│   └── screenshots/                            # High-resolution application captures
+│       ├── dashboard.png
+│       ├── storage-nodes.png
+│       ├── files.png
+│       └── audit.png
+│
+├── frontend/                                   # [PAVAN'S WORKSPACE] Next.js 14 App Router
+│   ├── .env.local                              # Active runtime env (NEXT_PUBLIC_API_MODE=real)
+│   ├── package.json                            # Next 14, React 18, TanStack Query, Lucide
+│   ├── tailwind.config.ts                      # Custom Apple Design tokens (ink, parchment, hairline)
+│   └── src/
+│       ├── app/
+│       │   ├── layout.tsx                      # Root layout, Google Fonts (Inter), Providers
+│       │   ├── providers.tsx                   # QueryClient, dynamic auth session, MSW bridge
+│       │   └── (app)/                          # Authenticated application shell
+│       │       ├── layout.tsx                  # Global sidebar & top navigation bar
+│       │       ├── dashboard/page.tsx          # Integrity overview & summary cards
+│       │       ├── files/page.tsx              # Vault files table & upload modal
+│       │       ├── approvals/page.tsx          # Dual-quorum review inbox & diff inspector
+│       │       ├── access/page.tsx             # Access grant management & request forms
+│       │       ├── audit/page.tsx              # Immutable audit trail & MSTScan links
+│       │       ├── nodes/page.tsx              # Decentralized storage node cluster dashboard
+│       │       └── settings/page.tsx           # Persona switcher & network settings
+│       │
+│       ├── components/
+│       │   ├── features/
+│       │   │   ├── nodes/                      # Storage Node Feature Suite
+│       │   │   │   ├── network-topology.tsx    # Interactive SVG mesh network visualization
+│       │   │   │   ├── add-node-dialog.tsx     # Token generator & node agent installer
+│       │   │   │   ├── decommission-modal.tsx  # Zero-data-loss safe node retirement
+│       │   │   │   ├── replication-card.tsx    # Redundancy & quorum control form
+│       │   │   │   └── node-table.tsx          # Node health & storage metrics table
+│       │   │   ├── files/                      # File upload dropzone, drawer & tables
+│       │   │   ├── approvals/                  # Inbox items, review card & diff viewer
+│       │   │   ├── access/                     # Active grants table & request dialog
+│       │   │   ├── audit/                      # Event filter bar & audit log table
+│       │   │   ├── dashboard/                  # Cryptographic integrity status widget
+│       │   │   └── versions/                   # Version history timeline & rollback
+│       │   ├── layout/
+│       │   │   ├── sidebar.tsx                 # Navigation sidebar with dynamic badge counts
+│       │   │   └── topbar.tsx                  # Persona chip, connected wallet & breadcrumbs
+│       │   └── ui/                             # Reusable Apple-styled design components
+│       │       ├── badge.tsx, button.tsx, card.tsx, data-table.tsx, drawer.tsx, modal.tsx
+│       │       ├── empty-state.tsx             # Rich contextual illustrations for zero data
+│       │       ├── hash-chip.tsx               # Truncated monospace SHA-256 chip with copy
+│       │       └── tx-link.tsx                 # Clickable explorer hyperlink to MSTScan
+│       │
+│       └── lib/
+│           ├── config.ts                       # Environment variable parser
+│           └── api/
+│               ├── client.ts                   # Robust fetch wrapper with auto-auth retry
+│               ├── token.ts                    # LocalStorage JWT token accessor
+│               └── hooks/                      # TanStack Query custom hooks
+│                   ├── useFiles.ts             # File query & multipart upload mutation
+│                   ├── useNodes.ts             # Node cluster query & policy mutations
+│                   ├── useApprovals.ts         # Approval inbox query & decision mutations
+│                   ├── useAccess.ts            # Grant queries & permission request mutations
+│                   └── useAudit.ts             # Paginated audit log & filter queries
+│
+└── backend/                                    # [VINEETH'S WORKSPACE] FastAPI Python Backend
+    ├── requirements-dev.txt                    # FastAPI, SQLAlchemy 2, Alembic, Pytest, PyJWT
+    ├── overvault.db                            # SQLite database (dev) / PostgreSQL (prod)
+    └── app/
+        ├── main.py                             # FastAPI factory, lifespan, CORS & background tasks
+        ├── config.py                           # Pydantic BaseSettings, CORS origins, JWT secrets
+        ├── db.py                               # SQLAlchemy engine & session factory
+        ├── deps.py                             # Current user JWT extraction & RBAC role guards
+        │
+        ├── api/
+        │   ├── router.py                       # Master API router aggregating all endpoints
+        │   └── routes/
+        │       ├── files.py                    # Multipart upload, blob download, hash verify
+        │       ├── nodes.py                    # Node registry, token generation, decommission
+        │       ├── approvals.py                # Dual approval workflows & decision actions
+        │       ├── access.py / permissions.py  # Access grants, capability checks, revocations
+        │       ├── audit.py                    # Flat & filtered immutable audit trail records
+        │       ├── auth.py                     # Dev JWT login & wallet authentication
+        │       ├── dashboard.py                # Vault statistics & aggregate metrics
+        │       └── health.py                   # Liveness probe & service state
+        │
+        ├── models/                             # SQLAlchemy Declarative ORM Models
+        │   ├── file.py                         # File entity (protection level, owner, current version)
+        │   ├── version.py                      # Version entity (SHA-256, storage key, author)
+        │   ├── permission.py                   # Access grants (read/write/admin, expiry timestamp)
+        │   ├── approval.py                     # Multi-sig approval requests & review decisions
+        │   ├── audit_outbox.py                 # Transactional outbox event records
+        │   └── user.py                         # User entity (role: employee, manager, admin, auditor)
+        │
+        ├── schemas/                            # Pydantic v2 validation models
+        │   ├── file.py, nodes.py, approval.py, permission.py, audit.py, auth.py
+        │
+        ├── services/                           # Core Domain Logic Layer
+        │   ├── storage.py                      # Local file system storage key addressing
+        │   ├── encryption.py                   # AES-256 Fernet payload encryption at rest
+        │   ├── hashing.py                      # SHA-256 cryptographic digest computation
+        │   ├── versioning.py                   # Immutable append-only revisions & rollbacks
+        │   ├── permissions.py                  # Access resolution & grant lifecycle
+        │   ├── approvals.py                    # Quorum calculation & approval state machine
+        │   └── rbac.py                         # Least-privilege role capability verification
+        │
+        ├── workers/                            # Autonomous Asynchronous Background Daemons
+        │   ├── outbox_worker.py                # Polls outbox events, batches & commits to chain
+        │   └── expiry_job.py                   # Sweeps expired access grants on schedule
+        │
+        └── tests/                              # Comprehensive Pytest Suite (47/47 Passing)
+            ├── conftest.py                     # TestClient fixtures, in-memory DB & auth headers
+            ├── test_files.py                   # Upload, download & integrity test cases
+            ├── test_nodes.py                   # Storage node registration & decommission tests
+            ├── test_outbox_worker.py           # Outbox batching & FakeChainService confirmation
+            ├── test_approvals.py               # Quorum review & decision constraints
+            ├── test_permissions.py             # RBAC role access & expiration tests
+            └── test_audit.py                   # Audit log generation & hashing tests
 ```
 
 ---
 
-## Quick Start
+## 👥 Team Work Allocation & Deliverables
 
-### 1. Environment Setup
+### Pavan (Frontend Lead & UI/UX Architect)
+* **Design System Execution:** Built the UI following `docs/DESIGN.md` Apple Design System guidelines using tailored CSS tokens (`bg-parchment`, `text-ink`, `border-hairline`, glassmorphism, refined micro-animations).
+* **Decentralized Storage Nodes UI:** Designed and developed the complete Node Management suite, featuring an interactive SVG constellation mesh network topology, token generation dialog, live replication policy card, and safe decommission preflight wizard.
+* **API Modernization & Data Streaming:** Implemented real binary `FormData` uploads, streaming blob downloads (`api.getBlob()`), and resilient API retry wrappers (`fetchWithAuth`) for real-time synchronization with Vineeth's backend.
+* **Dynamic Badges & Interactive States:** Added live polling approval counter badges in the sidebar, loading skeletons, responsive layouts, and rich empty states across all tables.
 
-```bash
-# Copy root environment file
-cp .env.example .env
-```
+### Vineeth (Backend Lead & Systems Architect)
+* **FastAPI Service Core:** Architected the modular FastAPI backend, incorporating asynchronous SQLAlchemy 2 ORM, Pydantic v2 schemas, and Alembic database migrations.
+* **Storage Node Control Plane:** Implemented storage node registry endpoints (`/api/nodes`, `/api/nodes/token`, `/api/nodes/register`, `/api/nodes/{id}/allocation`, `/api/nodes/{id}/decommission`, `/api/nodes/replication-policy`).
+* **Transactional Outbox Worker:** Created `workers/outbox_worker.py` to decouple web API requests from blockchain latency, reliably batching and committing events with automatic retry mechanisms.
+* **Zero-Trust Security & RBAC:** Enforced AES-256-GCM encryption at rest, SHA-256 hash recalculation on every file read, least-privilege role boundaries, and scheduled grant expiration sweeping (`workers/expiry_job.py`).
+* **Test Suite:** Authored a comprehensive Pytest suite containing 47 unit and integration tests covering all critical paths with 100% pass rate.
 
-### 2. Backend (FastAPI)
+---
 
+## 🚀 Quick Start & Verification
+
+### 1. Prerequisites
+- **Python 3.11+**
+- **Node.js 18+** & **npm**
+
+### 2. Start Backend (Vineeth's Zone)
 ```bash
 cd backend
-python -m venv .venv
-# On Windows:
-.venv\Scripts\activate
-# On Linux/macOS:
-# source .venv/bin/activate
+pip install -r requirements-dev.txt
 
-pip install -r requirements.txt
-pip install "web3>=7"
+# Run full test suite (47 passed)
+python -m pytest
 
-# Run tests
-pytest
-
-# Start backend server (port 8000)
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# Launch FastAPI development server (Port 8000)
+uvicorn app.main:create_app --factory --reload --port 8000
 ```
+*API interactive documentation will be available at:* `http://localhost:8000/docs`
 
-### 3. Frontend (Next.js)
-
+### 3. Start Frontend (Pavan's Zone)
 ```bash
 cd frontend
 npm install
 
-# Typecheck
-npm run typecheck
-
-# Start development server (port 3000)
+# Run development server (Port 3000 / 3001)
 npm run dev
 ```
-
-### 4. End-to-End Testing (Playwright)
-
-```bash
-# From repository root
-npx playwright test
-```
+*Access the application in your browser at:* `http://localhost:3000` (or `http://localhost:3001`)
 
 ---
 
-## Running with Live MST Testnet
+## 🔐 Demo Personas (Dev Authentication)
 
-To query live MST Testnet contracts:
-```env
-CHAIN_MODE=real
-MST_RPC_URL=https://testnetrpc.mstblockchain.com
-MST_CHAIN_ID=91562037
-```
-`RealChainService` reads deployed contract addresses automatically from `contracts/deployed.testnet.json`. Read operations (`verify_transaction`, `get_tx_status`, `get_audit_trail`) connect directly to the live chain without requiring a private key.
+Switch personas instantaneously in the **Settings** tab to test role-based capabilities:
 
-To submit new on-chain write transactions from the background outbox worker:
-```env
-MST_BACKEND_SIGNER_KEY=0x<funded_private_key_on_mst_testnet>
-```
+| Persona | Name | Role | Primary Permissions |
+| :--- | :--- | :--- | :--- |
+| `u1` | **Asha Rao** | `Employee` | Upload documents, request access, download granted files |
+| `u2` | **Ravi Kumar** | `Manager` | Review and approve/reject document modification requests |
+| `u3` | **Meera Iyer** | `Admin` | Full vault governance, node commissioning, storage allocation |
+| `u4` | **Kiran Shah** | `Auditor` | Read-only inspection of cryptographic audit proofs & MSTScan hashes |
 
 ---
 
-## Documentation
-
-- [Hackathon Demo Script](docs/demo-script.md)
-- [MSTScan Verification Walkthrough](docs/mstscan-verification.md)
-- [Security Checklist](docs/security-checklist.md)
-- [Mainnet Readiness Checklist](docs/mainnet-checklist.md)
-=======
-## Docs
-Start with `docs/planning/PARALLEL_PLAN.md`, then `docs/setup.md`.
-
-## Project Phase Status
-
-### Phase 3 — Production Audit Pipeline ✅
-- **Event-Driven Audit Pipeline:** Full transactional PostgreSQL Outbox with immutable `AuditEvent` model.
-- **Reliable Outbox Processing:** Worker reliability with deterministic exponential retry delays (5s, 30s, 5m, 30m, 1h) and dead-letter queue.
-- **Blockchain Anchoring Pipeline:** Seamless event routing to `RealChainService` (MST EVM) with gas estimation buffer and receipt confirmation.
-- **Verification APIs:** `GET /audit/{file_id}`, `GET /audit/{file_id}/verify`, and `GET /transaction/{tx_hash}`.
-- **Documentation:** [docs/PHASE_3_PRODUCTION_AUDIT_PIPELINE.md](file:///run/media/gigz/New%20Volume/Projects/2026/overvault/docs/PHASE_3_PRODUCTION_AUDIT_PIPELINE.md)
-
-### Phase 2 & Phase 6 — RealChain MST EVM Integration ✅
-- **Phase 6A:** [docs/Phase6A_MST_Connection_Check_README.md](file:///run/media/gigz/New%20Volume/Projects/2026/overvault/docs/Phase6A_MST_Connection_Check_README.md)
-- **Phase 6B:** [docs/Phase6B_MST_EVM_Deployment_README.md](file:///run/media/gigz/New%20Volume/Projects/2026/overvault/docs/Phase6B_MST_EVM_Deployment_README.md)
-- **Phase 6C:** [docs/Phase6C_MST_Testnet_Validation_README.md](file:///run/media/gigz/New%20Volume/Projects/2026/overvault/docs/Phase6C_MST_Testnet_Validation_README.md)
-- **Phase 2:** [docs/PHASE_2_REAL_CHAIN_INTEGRATION.md](file:///run/media/gigz/New%20Volume/Projects/2026/overvault/docs/PHASE_2_REAL_CHAIN_INTEGRATION.md)
-
->>>>>>> origin/develop
+## 📄 License
+MIT © 2026

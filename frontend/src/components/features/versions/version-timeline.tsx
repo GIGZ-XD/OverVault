@@ -24,11 +24,11 @@ export interface VersionTimelineProps {
 
 export function VersionTimeline({ versions, currentVersion, onRollback, isLoading }: VersionTimelineProps) {
   if (isLoading) {
-    return <div className="p-4 text-xs text-text-muted animate-pulse">Loading version history...</div>;
+    return <div className="p-4 text-xs text-ink-muted-48 animate-pulse">Loading version history...</div>;
   }
 
   if (!versions || versions.length === 0) {
-    return <div className="text-xs text-text-muted italic py-2">No version history available.</div>;
+    return <div className="text-xs text-ink-muted-48 italic py-2">No version history available.</div>;
   }
 
   // Sort versions descending
@@ -50,9 +50,9 @@ export function VersionTimeline({ versions, currentVersion, onRollback, isLoadin
       description: (
         <div className="space-y-2 mt-1">
           <div className="flex items-center gap-2 font-mono text-[11px]">
-            <span className="text-text-muted">Author: {v.author}</span>
-            <span className="text-text-dim">•</span>
-            <span className="text-text-muted bg-surface-2 px-1.5 py-0.5 rounded border border-border/40">
+            <span className="text-ink-muted-48">Author: {v.author}</span>
+            <span className="text-ink-muted-48">•</span>
+            <span className="text-ink-muted-48 bg-parchment px-1.5 py-0.5 rounded border border-border/40">
               {shortHash(v.hash)}
             </span>
           </div>

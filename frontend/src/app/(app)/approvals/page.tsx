@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api/client";
 import { useToast } from "@/components/ui/toast";
 
 export default function ApprovalsPage() {
   const [approvals, setApprovals] = useState<ApprovalItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedApproval, setSelectedApproval] = useState<ApprovalItem | null>(null);
   const [isReviewOpen, setIsReviewOpen] = useState(false);
 
@@ -26,11 +27,13 @@ export default function ApprovalsPage() {
 
   const loadApprovals = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const data = await api<ApprovalItem[]>("/approvals");
       setApprovals(data);
     } catch (err) {
       console.error(err);
+      setLoadError("Failed to fetch pending approval workflows from vault API.");
     } finally {
       setIsLoading(false);
     }
@@ -105,6 +108,18 @@ export default function ApprovalsPage() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="p-4 rounded-[12px] bg-danger/10 border border-danger/20 flex items-center justify-between text-xs text-ink" role="alert">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 text-danger shrink-0" />
+            <span>{loadError}</span>
+          </div>
+          <Button size="sm" variant="secondary" onClick={loadApprovals} className="text-xs h-7">
+            Retry Connection
+          </Button>
+        </div>
+      )}
 
       {/* Approval Inbox Component */}
       <ApprovalInbox

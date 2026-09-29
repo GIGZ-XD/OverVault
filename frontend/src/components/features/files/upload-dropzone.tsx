@@ -9,7 +9,7 @@ import { formatBytes } from "@/lib/utils";
 export interface UploadDropzoneModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onUpload: (fileData: { name: string; size: number; protection: string }) => Promise<void>;
+  onUpload: (fileData: { name: string; size: number; protection: string; file?: File }) => Promise<void>;
 }
 
 export function UploadDropzoneModal({ isOpen, onClose, onUpload }: UploadDropzoneModalProps) {
@@ -40,6 +40,7 @@ export function UploadDropzoneModal({ isOpen, onClose, onUpload }: UploadDropzon
         name: selectedFile.name,
         size: selectedFile.size,
         protection: protection,
+        file: selectedFile,
       });
       setSelectedFile(null);
       onClose();

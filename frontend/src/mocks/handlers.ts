@@ -1,186 +1,347 @@
 import { http, HttpResponse } from "msw";
+import initialFiles from "@/mocks/fixtures/files.json";
 import initialApprovals from "@/mocks/fixtures/approvals.json";
 import initialAudit from "@/mocks/fixtures/audit.json";
-import initialFiles from "@/mocks/fixtures/files.json";
 import initialPermissions from "@/mocks/fixtures/permissions.json";
 import initialUsers from "@/mocks/fixtures/users.json";
 import initialVersions from "@/mocks/fixtures/versions.json";
+import initialNodes from "@/mocks/fixtures/nodes.json";
 
-/**
- * Mock auth mirrors the real nonce flow but deliberately accepts only the
- * mock adapter signature. Cryptographic verification belongs to the backend.
- */
-const nonceStore = new Map<string, string>();
-const mockSignature = "0xmocksig_pannaga_overvault_test";
-const usersByAddress = Object.fromEntries(initialUsers.map((user) => [user.wallet.toLowerCase(), user]));
-
+// In-memory mutable state for realistic interactive preview without backend
 let filesState = [...initialFiles];
 let approvalsState = [...initialApprovals];
 let auditState = [...initialAudit];
-let versionsState: Array<Record<string, any>> = [...initialVersions];
-let permissionsState: Array<Record<string, any>> = [...initialPermissions];
-let sequence = 1;
-
-function nextId(prefix: string): string {
-  sequence += 1;
-  return `${prefix}${sequence}`;
-}
-
-function mockNonce(): string {
-  return `mock-nonce-${sequence}-${"0".repeat(48)}`;
-}
+let permissionsState = [...initialPermissions];
+let usersState = [...initialUsers];
+let versionsState = [...initialVersions];
+let nodesState = [...initialNodes];
+let replicationPolicyState = {
+  replication_factor: 3,
+  min_write_quorum: 2,
+  auto_rebalance: true,
+  heartbeat_interval_sec: 15,
+  encryption_mode: "AES-256-GCM",
+};
 
 export const handlers = [
-  http.get("*/api/health", () => HttpResponse.json({ status: "ok", timestamp: new Date().toISOString() })),
+  // Health check
+  http.get("*/health", () => {
+    return HttpResponse.json({ status: "ok", timestamp: new Date().toISOString() });
+  }),
 
-  http.post("*/api/auth/dev-login", async ({ request }) => {
-    const body = (await request.json().catch(() => ({}))) as { email?: string };
-    const user = initialUsers.find((item) => item.name === body.email) ?? initialUsers[0];
+  // Auth Dev & Wallet endpoints
+  http.post("*/auth/dev-login", () => {
+    return HttpResponse.json({ access_token: "mock-dev-jwt-token-xyz123", token_type: "bearer" });
+  }),
+  http.post("*/auth/nonce", () => {
+    return HttpResponse.json({ nonce: "overvault-nonce-987654321" });
+  }),
+  http.post("*/auth/wallet-login", () => {
+    return HttpResponse.json({ access_token: "mock-wallet-jwt-token-abc789", token_type: "bearer" });
+  }),
+
+  // Dashboard summary
+  http.get("*/dashboard/summary", () => {
+    const verifiedCount = filesState.filter((f) => f.verification === "verified").length;
+    const pendingApprovals = approvalsState.filter((a) => a.status === "pending").length;
+    const activeGrants = permissionsState.filter((p) => p.status === "active").length;
     return HttpResponse.json({
-      access_token: "mock-dev-jwt-token-xyz123",
-      token_type: "bearer",
-      user: { ...user, email: `${user.id}@example.test`, wallet_address: user.wallet },
+      total_files: filesState.length,
+      verified_files: verifiedCount,
+      pending_approvals: pendingApprovals,
+      active_permissions: activeGrants,
+      integrity_score: "100%",
+      blockchain_status: "connected (MST Testnet)",
     });
   }),
 
-  http.post("*/api/auth/nonce", async ({ request }) => {
-    const body = (await request.json()) as { address?: string };
-    const address = (body.address ?? "").toLowerCase();
-    if (!address) return HttpResponse.json({ detail: "address required" }, { status: 422 });
-    const nonce = mockNonce();
-    nonceStore.set(address, nonce);
-    return HttpResponse.json({ nonce, message: `Sign in to OverVault.\n\nNonce: ${nonce}` });
+  // Files
+  http.get("*/files", () => {
+    return HttpResponse.json(filesState);
   }),
 
-  http.post("*/api/auth/wallet-login", async ({ request }) => {
-    const body = (await request.json()) as { address?: string; signature?: string };
-    const address = (body.address ?? "").toLowerCase();
-    const signature = body.signature ?? "";
-    if (!nonceStore.has(address)) {
-      return HttpResponse.json({ detail: { code: "nonce_expired", message: "No valid nonce" } }, { status: 401 });
-    }
-    nonceStore.delete(address);
-    if (signature !== mockSignature) {
-      return HttpResponse.json({ detail: { code: "invalid_signature", message: "Signature mismatch" } }, { status: 401 });
-    }
-    const user = usersByAddress[address];
-    if (!user) {
-      return HttpResponse.json({ detail: { code: "address_not_found", message: "Address not registered" } }, { status: 403 });
-    }
-    return HttpResponse.json({
-      access_token: `mock.jwt.${user.id}.${sequence}`,
-      token_type: "bearer",
-      user: { ...user, email: `${user.id}@example.test`, wallet_address: user.wallet },
-    });
-  }),
-
-  http.get("*/api/dashboard/summary", () => HttpResponse.json({
-    total_files: filesState.length,
-    verified_files: filesState.filter((file) => file.verification === "verified").length,
-    pending_approvals: approvalsState.filter((approval) => approval.status === "pending").length,
-    active_permissions: permissionsState.filter((permission) => permission.status === "active").length,
-    integrity_score: "100%",
-    blockchain_status: "connected (fake chain - dev)",
-  })),
-
-  http.get("*/api/files", () => HttpResponse.json(filesState)),
-
-  http.post("*/api/files", async ({ request }) => {
-    const body = (await request.json().catch(() => ({}))) as { name?: string; size?: number; protection?: string };
-    const file = {
-      id: nextId("f"),
-      name: body.name ?? "uploaded-document.pdf",
-      owner: "u1",
-      size: body.size ?? 124500,
-      protection: body.protection ?? "none",
+  http.post("*/files", async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    const newFile = {
+      id: `f${Date.now()}`,
+      name: body.name || "uploaded-document.pdf",
+      owner: body.owner || "u1",
+      size: body.size || 124500,
+      protection: body.protection || "none",
       verification: "verified",
-      hash: "0x9f3a11c21e",
-      ownership_tx: "0xtx1",
+      hash: "0x" + Array.from({ length: 10 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+      ownership_tx: "0xtx" + Math.floor(Math.random() * 10000),
     };
-    filesState = [file, ...filesState];
-    versionsState = [...versionsState, {
-      file_id: file.id,
+    filesState.unshift(newFile);
+
+    // Add initial version
+    versionsState.push({
+      file_id: newFile.id,
       version: 1,
-      author: file.owner,
+      author: newFile.owner,
       created_at: new Date().toISOString(),
-      hash: file.hash,
+      hash: newFile.hash,
       verification: "verified",
-    }];
-    auditState = [{
-      id: nextId("e"),
+    });
+
+    // Add audit log entry
+    auditState.unshift({
+      id: `e${Date.now()}`,
       event_type: "ownership_register",
-      file_id: file.id,
+      file_id: newFile.id,
+      file_name: newFile.name,
       actor: "0xaaa1",
-      tx_hash: file.ownership_tx,
+      actor_name: "Asha Rao",
+      tx_hash: newFile.ownership_tx,
       verification: "verified",
       timestamp: Math.floor(Date.now() / 1000),
-    }, ...auditState];
-    return HttpResponse.json(file, { status: 201 });
+      detail: `Registered SHA-256 ownership digest for ${newFile.name}`,
+    });
+
+    return HttpResponse.json(newFile, { status: 201 });
   }),
 
-  http.get("*/api/files/:id", ({ params }) => {
-    const file = filesState.find((item) => item.id === params.id);
-    return file ? HttpResponse.json(file) : new HttpResponse(null, { status: 404 });
+  http.get("*/files/:id", ({ params }) => {
+    const file = filesState.find((f) => f.id === params.id);
+    if (!file) return new HttpResponse(null, { status: 404 });
+    return HttpResponse.json(file);
   }),
 
-  http.delete("*/api/files/:id", ({ params }) => {
-    filesState = filesState.filter((file) => file.id !== params.id);
+  http.delete("*/files/:id", ({ params }) => {
+    filesState = filesState.filter((f) => f.id !== params.id);
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.get("*/api/files/:id/download", ({ params }) => {
-    const file = filesState.find((item) => item.id === params.id);
-    return HttpResponse.json({ content: `[Encrypted Vault Content for ${file?.name ?? params.id}]`, hash: file?.hash ?? "0x9f3a11c21e", verified: true });
+  http.get("*/files/:id/download", ({ params }) => {
+    const file = filesState.find((f) => f.id === params.id);
+    return HttpResponse.json({
+      content: `[Encrypted Vault Content for ${file?.name || params.id}]`,
+      hash: file?.hash || "0x9f3a11c21e",
+      verified: true,
+    });
   }),
 
-  http.post("*/api/files/:id/verify", ({ params }) => {
-    const file = filesState.find((item) => item.id === params.id);
-    return HttpResponse.json({ file_id: params.id, local_hash: file?.hash ?? "0x9f3a11c21e", chain_hash: file?.hash ?? "0x9f3a11c21e", verified: true, timestamp: new Date().toISOString() });
+  http.post("*/files/:id/verify", ({ params }) => {
+    const file = filesState.find((f) => f.id === params.id);
+    return HttpResponse.json({
+      file_id: params.id,
+      local_hash: file?.hash || "0x9f3a11c21e",
+      chain_hash: file?.hash || "0x9f3a11c21e",
+      verified: true,
+      timestamp: new Date().toISOString(),
+    });
   }),
 
-  http.put("*/api/files/:id/protection", async ({ params, request }) => {
+  http.put("*/files/:id/protection", async ({ params, request }) => {
     const body = (await request.json()) as { protection: string };
-    filesState = filesState.map((file) => file.id === params.id ? { ...file, protection: body.protection } : file);
+    const fileIndex = filesState.findIndex((f) => f.id === params.id);
+    if (fileIndex !== -1) {
+      filesState[fileIndex] = { ...filesState[fileIndex], protection: body.protection };
+    }
     return HttpResponse.json({ id: params.id, protection: body.protection });
   }),
 
-  http.get("*/api/files/:id/versions", ({ params }) => HttpResponse.json(versionsState.filter((version) => version.file_id === params.id))),
-
-  http.post("*/api/files/:id/versions", async ({ params, request }) => {
-    const body = (await request.json().catch(() => ({}))) as { comment?: string };
-    const fileVersions = versionsState.filter((version) => version.file_id === params.id);
-    const version = { id: nextId("v"), file_id: params.id as string, version_number: fileVersions.length + 1, sha256: "0x9f3a11c21e", size_bytes: 124500, author_id: "u1", comment: body.comment ?? "", rolled_back_from: null, created_at: new Date().toISOString() };
-    versionsState = [...versionsState, version];
-    return HttpResponse.json(version, { status: 201 });
+  // Versions
+  http.get("*/files/:id/versions", ({ params }) => {
+    const fileVersions = versionsState.filter((v) => v.file_id === params.id);
+    return HttpResponse.json(fileVersions);
   }),
 
-  http.get("*/api/files/:id/permissions", ({ params }) => HttpResponse.json(permissionsState.filter((permission) => permission.file_id === params.id))),
-  http.post("*/api/files/:id/permissions", async ({ params, request }) => {
-    const body = (await request.json()) as { grantee?: string; permission?: string; expires_at?: string };
-    const permission = { id: nextId("p"), file_id: params.id as string, grantee: body.grantee ?? "u2", permission: body.permission ?? "read", expires_at: body.expires_at ?? null, status: "active" };
-    permissionsState = [...permissionsState, permission];
-    return HttpResponse.json(permission, { status: 201 });
+  http.post("*/files/:id/versions", async ({ params, request }) => {
+    const body = (await request.json().catch(() => ({}))) as any;
+    const existing = versionsState.filter((v) => v.file_id === params.id);
+    const newVersion = {
+      file_id: params.id as string,
+      version: existing.length + 1,
+      author: body.author || "u1",
+      created_at: new Date().toISOString(),
+      hash: "0x" + Array.from({ length: 10 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+      verification: "verified",
+    };
+    versionsState.push(newVersion);
+    return HttpResponse.json(newVersion, { status: 201 });
   }),
-  http.delete("*/api/permissions/:id", ({ params }) => {
-    permissionsState = permissionsState.filter((permission) => permission.id !== params.id);
+
+  http.post("*/files/:id/versions/:v/rollback", ({ params }) => {
+    const targetVersion = versionsState.find(
+      (v) => v.file_id === params.id && v.version === Number(params.v)
+    );
+    if (!targetVersion) return new HttpResponse(null, { status: 404 });
+    
+    // Update file active hash to match rolled back version
+    const fileIndex = filesState.findIndex((f) => f.id === params.id);
+    if (fileIndex !== -1) {
+      filesState[fileIndex] = { ...filesState[fileIndex], hash: targetVersion.hash };
+    }
+    return HttpResponse.json({ status: "rolled_back", active_version: Number(params.v) });
+  }),
+
+  // Permissions
+  http.get("*/files/:id/permissions", ({ params }) => {
+    const filePermissions = permissionsState.filter((p) => p.file_id === params.id);
+    return HttpResponse.json(filePermissions);
+  }),
+
+  http.post("*/files/:id/permissions", async ({ params, request }) => {
+    const body = (await request.json()) as any;
+    const newPerm = {
+      id: `p${Date.now()}`,
+      file_id: params.id as string,
+      grantee: body.grantee || "u2",
+      permission: body.permission || "read",
+      expires_at: body.expires_at || "2026-12-31T00:00:00Z",
+      status: "active",
+    };
+    permissionsState.push(newPerm);
+    return HttpResponse.json(newPerm, { status: 201 });
+  }),
+
+  http.delete("*/permissions/:id", ({ params }) => {
+    permissionsState = permissionsState.filter((p) => p.id !== params.id);
     return new HttpResponse(null, { status: 204 });
   }),
 
-  http.get("*/api/approvals", () => HttpResponse.json(approvalsState)),
-  http.post("*/api/approvals", async ({ request }) => {
-    const body = (await request.json()) as { file_id?: string; comment?: string };
-    const approval = { id: nextId("a"), file_id: body.file_id ?? "f1", version_number: 1, submitted_by: "u1", reviewer_id: null, status: "pending", comment: body.comment ?? "Requested update", request_comment: body.comment ?? "Requested update", decision_comment: "", created_at: new Date().toISOString(), decided_at: null };
-    approvalsState = [approval, ...approvalsState];
-    return HttpResponse.json(approval, { status: 201 });
-  }),
-  http.post("*/api/approvals/:id/decision", async ({ params, request }) => {
-    const body = (await request.json()) as { decision?: "approved" | "rejected"; signature?: string | null };
-    const status = body.decision ?? "approved";
-    approvalsState = approvalsState.map((approval) => approval.id === params.id ? { ...approval, status, decided_at: new Date().toISOString(), decision_comment: "" } : approval);
-    auditState = [{ id: nextId("e"), event_type: "approval_decision", file_id: "f1", actor: "0xaaa1", tx_hash: "0xtx1", verification: "verified", timestamp: Math.floor(Date.now() / 1000) }, ...auditState];
-    return HttpResponse.json(approvalsState.find((approval) => approval.id === params.id) ?? { id: params.id, status });
+  // Approvals
+  http.get("*/approvals", () => {
+    return HttpResponse.json(approvalsState);
   }),
 
-  http.get("*/api/audit", () => HttpResponse.json(auditState)),
-  http.get("*/api/users", () => HttpResponse.json(initialUsers)),
+  http.post("*/approvals", async ({ request }) => {
+    const body = (await request.json()) as any;
+    const newApproval = {
+      id: `a${Date.now()}`,
+      file_id: body.file_id || "f1",
+      submitted_by: body.submitted_by || "u1",
+      status: "pending",
+      comment: body.comment || "Requested update",
+    };
+    approvalsState.unshift(newApproval);
+    return HttpResponse.json(newApproval, { status: 201 });
+  }),
+
+  http.post("*/approvals/:id/decision", async ({ params, request }) => {
+    const body = (await request.json()) as { decision: "approved" | "rejected" };
+    const approvalIndex = approvalsState.findIndex((a) => a.id === params.id);
+    if (approvalIndex !== -1) {
+      approvalsState[approvalIndex] = {
+        ...approvalsState[approvalIndex],
+        status: body.decision,
+      };
+    }
+    return HttpResponse.json({ id: params.id, status: body.decision });
+  }),
+
+  // Audit
+  http.get("*/audit", () => {
+    return HttpResponse.json(auditState);
+  }),
+
+  // Users
+  http.get("*/users", () => {
+    return HttpResponse.json(usersState);
+  }),
+
+  // Storage Nodes
+  http.get("*/nodes", () => {
+    return HttpResponse.json(nodesState);
+  }),
+
+  http.post("*/nodes/token", () => {
+    const token = `mst-node-sec-${Math.random().toString(36).substring(2, 15)}`;
+    return HttpResponse.json({
+      token,
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+      install_command: `curl -sSL https://overvault.mst/install-agent.sh | sh -s -- --token=${token} --cluster=mst-corp-vault`,
+    });
+  }),
+
+  http.post("*/nodes/register", async ({ request }) => {
+    const body = (await request.json()) as any;
+    const newNode = {
+      id: `node-${(body.name || "custom-node").toLowerCase().replace(/\s+/g, "-").slice(0, 20)}-${Math.random().toString(36).substring(2, 6)}`,
+      name: body.name || "New Storage Node",
+      hostname: body.hostname || "storage-node.internal",
+      ip_address: body.ip_address || "192.168.1.50",
+      region: body.region || "Local Edge",
+      allocated_storage_gb: Number(body.allocated_storage_gb) || 500,
+      used_storage_gb: 0.0,
+      status: "online",
+      health_score: 100,
+      latency_ms: Math.floor(Math.random() * 20) + 10,
+      uptime_percentage: 100.0,
+      is_bootstrap: false,
+      agent_version: "v1.2.0",
+      stored_chunks_count: 0,
+      last_heartbeat: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    };
+    nodesState.push(newNode);
+
+    // Record audit event
+    auditState.unshift({
+      id: `e${Date.now()}`,
+      event_type: "node_register",
+      file_id: newNode.id,
+      file_name: newNode.name,
+      actor: "0xccc3",
+      actor_name: "Meera Iyer (admin)",
+      tx_hash: "0x" + Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+      verification: "verified",
+      timestamp: Math.floor(Date.now() / 1000),
+      detail: `Registered new storage node [${newNode.name}] with ${newNode.allocated_storage_gb}GB allocation`,
+    });
+
+    return HttpResponse.json(newNode, { status: 201 });
+  }),
+
+  http.put("*/nodes/:id/allocation", async ({ params, request }) => {
+    const body = (await request.json()) as { allocated_storage_gb: number };
+    const nodeIndex = nodesState.findIndex((n) => n.id === params.id);
+    if (nodeIndex !== -1) {
+      nodesState[nodeIndex] = {
+        ...nodesState[nodeIndex],
+        allocated_storage_gb: body.allocated_storage_gb,
+      };
+      return HttpResponse.json(nodesState[nodeIndex]);
+    }
+    return new HttpResponse(null, { status: 404 });
+  }),
+
+  http.delete("*/nodes/:id/decommission", ({ params }) => {
+    const target = nodesState.find((n) => n.id === params.id);
+    if (!target) return new HttpResponse(null, { status: 404 });
+    const evacuatedChunks = target.stored_chunks_count || 120;
+    nodesState = nodesState.filter((n) => n.id !== params.id);
+
+    // Record audit event
+    auditState.unshift({
+      id: `e${Date.now()}`,
+      event_type: "node_decommission",
+      file_id: target.id,
+      file_name: target.name,
+      actor: "0xccc3",
+      actor_name: "Meera Iyer (admin)",
+      tx_hash: "0x" + Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+      verification: "verified",
+      timestamp: Math.floor(Date.now() / 1000),
+      detail: `Evacuated ${evacuatedChunks} chunks & safely removed storage node [${target.name}]`,
+    });
+
+    return HttpResponse.json({
+      status: "decommissioned",
+      node_id: params.id,
+      evacuated_chunks: evacuatedChunks,
+      message: `Evacuated ${evacuatedChunks} encrypted chunks and safely removed node.`,
+    });
+  }),
+
+  http.get("*/nodes/replication-policy", () => {
+    return HttpResponse.json(replicationPolicyState);
+  }),
+
+  http.put("*/nodes/replication-policy", async ({ request }) => {
+    const body = (await request.json()) as any;
+    replicationPolicyState = { ...replicationPolicyState, ...body };
+    return HttpResponse.json(replicationPolicyState);
+  }),
 ];

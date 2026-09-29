@@ -70,7 +70,7 @@ export function GrantDialog({
       <div className="space-y-4">
         {/* Select Grantee */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-text flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
             <User className="w-3.5 h-3.5 text-accent" /> Grantee User
           </label>
           <Select
@@ -85,7 +85,7 @@ export function GrantDialog({
 
         {/* Select Permission Level */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-text flex items-center gap-1.5">
+          <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
             <Shield className="w-3.5 h-3.5 text-accent" /> Permission Tier
           </label>
           <Select
@@ -105,7 +105,7 @@ export function GrantDialog({
           value={expiresAt}
           onChange={(e) => setExpiresAt(e.target.value)}
         />
-        <p className="text-[11px] text-text-muted italic">
+        <p className="text-[11px] text-ink-muted-48 italic">
           Permission grants automatically expire on-chain via the background worker.
         </p>
       </div>

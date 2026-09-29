@@ -39,15 +39,15 @@ export function SummaryCards({ summary, isLoading }: SummaryCardsProps) {
   const cards = [
     {
       title: "Protected Files",
-      value: summary?.total_files ?? 2,
-      subtext: `${summary?.verified_files ?? 1} Blockchain Verified`,
+      value: summary?.total_files ?? 0,
+      subtext: `${summary?.verified_files ?? 0} Blockchain Verified`,
       icon: FileCheck,
       iconColor: "text-primary",
       iconBg: "bg-primary/10",
     },
     {
       title: "Pending Approvals",
-      value: summary?.pending_approvals ?? 1,
+      value: summary?.pending_approvals ?? 0,
       subtext: "Requires review",
       icon: Clock,
       iconColor: "text-warning",
@@ -55,7 +55,7 @@ export function SummaryCards({ summary, isLoading }: SummaryCardsProps) {
     },
     {
       title: "Active Grants",
-      value: summary?.active_permissions ?? 1,
+      value: summary?.active_permissions ?? 0,
       subtext: "Scoped user permissions",
       icon: KeyRound,
       iconColor: "text-primary",
