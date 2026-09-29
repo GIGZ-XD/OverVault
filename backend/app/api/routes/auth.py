@@ -15,6 +15,7 @@ delivered, spec-matching design for these two endpoints specifically.
 """
 from __future__ import annotations
 
+import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -105,7 +106,11 @@ def me(user: User = Depends(get_current_user)):
 def update_profile(body: UpdateProfileRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> User:
     """Update display name for the current authenticated user session."""
     if body.name and body.name.strip():
-        user.name = body.name.strip()
+        new_name = body.name.strip()
+        # Protect Pavan (u1) from being renamed if another session accidentally targets u1
+        if user.id == "u1" and not new_name.lower().startswith("pavan"):
+            return user
+        user.name = new_name
         db.commit()
         db.refresh(user)
     return user
@@ -114,29 +119,54 @@ def update_profile(body: UpdateProfileRequest, db: Session = Depends(get_db), us
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 def register(body: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
     """Register or claim a distinct identity for a teammate with their name and optional wallet."""
+    raw_name = (body.name or "").strip()
     address = body.address.strip().lower() if body.address else None
+
+    # 1. If this is Pavan connecting with his credentials, return Pavan (u1)
+    if raw_name.lower() == "pavan" or (address == "0xaaa1" and raw_name.lower().startswith("pavan")):
+        pavan = db.get(User, "u1")
+        if pavan:
+            return _token(pavan)
+
+    # 2. Never allow another user to inherit or overwrite Pavan's address
+    if address == "0xaaa1":
+        address = None
+
+    # 3. Check if this non-Pavan user is already registered with their wallet address
     if address:
-        existing = db.scalar(select(User).where(User.wallet_address == address))
+        existing = db.scalar(select(User).where(User.wallet_address == address, User.id != "u1"))
         if existing:
-            if body.name and body.name.strip():
-                existing.name = body.name.strip()
+            if raw_name:
+                existing.name = raw_name
                 db.commit()
                 db.refresh(existing)
             return _token(existing)
 
+    # Check if a non-Pavan user is already registered with this exact display name
+    if raw_name and raw_name.lower() != "pavan":
+        existing_by_name = db.scalar(select(User).where(func.lower(User.name) == raw_name.lower(), User.id != "u1"))
+        if existing_by_name:
+            if address and not existing_by_name.wallet_address:
+                existing_by_name.wallet_address = address
+                db.commit()
+                db.refresh(existing_by_name)
+            return _token(existing_by_name)
+
+    # 4. Create a brand new distinct user for this teammate
     user_count = db.scalar(select(func.count(User.id))) or 0
     candidate_id = f"u{user_count + 1}"
     while db.get(User, candidate_id) is not None:
         user_count += 1
         candidate_id = f"u{user_count + 1}"
 
-    display_name = body.name.strip() if body.name and body.name.strip() else f"Member {candidate_id}"
+    display_name = raw_name if raw_name else f"Teammate {candidate_id}"
+    user_wallet = address or f"0x{uuid.uuid4().hex[:10]}"
     user = User(
         id=candidate_id,
         email=f"{candidate_id}@vault.local",
         name=display_name,
-        role=body.role or Role.employee,
-        wallet_address=address,
+        role=Role.employee,
+        wallet_address=user_wallet,
         is_active=True,
     )
     db.add(user)

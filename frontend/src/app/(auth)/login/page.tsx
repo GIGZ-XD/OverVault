@@ -24,6 +24,7 @@ import { wallet } from "@/lib/wallet";
 import { useQueryClient } from "@tanstack/react-query";
 import { qk } from "@/lib/api/keys";
 import { shortHash } from "@/lib/utils";
+import { resolveWalletForUser, getOrCreateDeviceWallet } from "@/lib/wallet/identity";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -55,13 +56,18 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      let targetAddress = "0xaaa1";
+      const cleanName = displayName.trim();
+      const isPavan = cleanName.toLowerCase() === "pavan" || cleanName.toLowerCase().startsWith("pavan ");
+
+      let targetAddress = resolveWalletForUser(cleanName);
 
       if (provider === "bridgekey") {
         try {
           const conn = await wallet.connect();
-          if (conn.address) {
-            targetAddress = conn.address;
+          if (conn.address && conn.address.toLowerCase() !== "0xaaa1") {
+            targetAddress = conn.address.toLowerCase();
+          } else if (isPavan) {
+            targetAddress = "0xaaa1";
           }
         } catch (walletErr) {
           console.warn("BridgeKey adapter connect note:", walletErr);
@@ -70,8 +76,13 @@ export default function LoginPage() {
         const ethereum = (window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } }).ethereum;
         const accounts = await ethereum.request({ method: "eth_requestAccounts" });
         if (accounts && accounts.length > 0) {
-          targetAddress = accounts[0];
+          targetAddress = accounts[0].toLowerCase();
         }
+      }
+
+      // Hard safety check: only Pavan can ever connect with 0xaaa1
+      if (!isPavan && targetAddress.toLowerCase() === "0xaaa1") {
+        targetAddress = getOrCreateDeviceWallet();
       }
 
       setConnectedAddress(targetAddress);
@@ -100,10 +111,20 @@ export default function LoginPage() {
 
   // Step 2: Sign Challenge & Exchange for JWT
   const handleSignAndVerify = async () => {
-    if (!connectedAddress) return;
     setLoading(true);
 
     try {
+      const cleanName = displayName.trim();
+      const isPavan = cleanName.toLowerCase() === "pavan" || cleanName.toLowerCase().startsWith("pavan ");
+
+      let effectiveAddress = connectedAddress || resolveWalletForUser(cleanName);
+      if (!isPavan && effectiveAddress.toLowerCase() === "0xaaa1") {
+        effectiveAddress = getOrCreateDeviceWallet();
+        setConnectedAddress(effectiveAddress);
+      } else if (isPavan) {
+        effectiveAddress = "0xaaa1";
+      }
+
       let signature = "0x" + Array.from({ length: 130 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
 
       // Attempt personal_sign with provider if active
@@ -120,7 +141,7 @@ export default function LoginPage() {
           }).ethereum;
           signature = await ethereum.request({
             method: "personal_sign",
-            params: [nonceMessage, connectedAddress],
+            params: [nonceMessage, effectiveAddress],
           });
         } catch (err: unknown) {
           const errMsg = err instanceof Error ? err.message : String(err);
@@ -132,28 +153,32 @@ export default function LoginPage() {
 
       // Try backend /auth/wallet-login
       let jwtToken: string | null = null;
-      const shortAddr = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`;
-      const chosenName = displayName.trim() || `Operator (${shortAddr})`;
-      let userProfile = { name: chosenName, role: "operator", wallet: connectedAddress };
+      const shortAddr = `${effectiveAddress.slice(0, 6)}...${effectiveAddress.slice(-4)}`;
+      const chosenName = cleanName || (isPavan ? "Pavan" : `Teammate (${shortAddr})`);
+      let userProfile = { name: chosenName, role: isPavan ? "admin" : "employee", wallet: effectiveAddress };
 
       try {
-        const loginRes = await api<{ access_token: string; user?: { name: string; role: string; wallet_address?: string } }>(
+        const loginRes = await api<{ access_token: string; user?: { id?: string; name: string; role: string; wallet_address?: string } }>(
           "/auth/wallet-login",
           {
             method: "POST",
             body: JSON.stringify({
-              address: connectedAddress,
+              address: effectiveAddress,
               signature: signature,
             }),
           }
         );
         if (loginRes.access_token) {
+          // If this resolved to u1 but user is NOT Pavan, reject and register separately
+          if (!isPavan && (loginRes.user?.id === "u1" || loginRes.user?.wallet_address?.toLowerCase() === "0xaaa1")) {
+            throw new Error("Address reserved for administrator.");
+          }
           jwtToken = loginRes.access_token;
           if (loginRes.user) {
             userProfile = {
-              name: chosenName,
-              role: loginRes.user.role || "operator",
-              wallet: loginRes.user.wallet_address || connectedAddress,
+              name: loginRes.user.name || chosenName,
+              role: loginRes.user.role || (isPavan ? "admin" : "employee"),
+              wallet: loginRes.user.wallet_address || effectiveAddress,
             };
           }
         }
@@ -167,8 +192,8 @@ export default function LoginPage() {
               method: "POST",
               body: JSON.stringify({
                 name: chosenName,
-                address: connectedAddress,
-                role: "employee",
+                address: effectiveAddress,
+                role: isPavan ? "admin" : "employee",
               }),
             }
           );
@@ -177,21 +202,21 @@ export default function LoginPage() {
             if (regRes.user) {
               userProfile = {
                 name: regRes.user.name || chosenName,
-                role: regRes.user.role || "employee",
-                wallet: regRes.user.wallet_address || connectedAddress,
+                role: regRes.user.role || (isPavan ? "admin" : "employee"),
+                wallet: regRes.user.wallet_address || effectiveAddress,
               };
             }
           }
         } catch (regErr) {
           console.warn("Register route note:", regErr);
-          // If register route is unavailable, fallback to matching seeded wallet or dev-login
-          const fallbackUserId = connectedAddress.toLowerCase().includes("bbb2")
+          // Fallback: Never fall back to u1 for teammates!
+          const fallbackUserId = isPavan
+            ? "u1"
+            : effectiveAddress.toLowerCase().includes("bbb2")
             ? "u2"
-            : connectedAddress.toLowerCase().includes("ccc3")
+            : effectiveAddress.toLowerCase().includes("ccc3")
             ? "u3"
-            : connectedAddress.toLowerCase().includes("ddd4")
-            ? "u4"
-            : "u1";
+            : "u2";
 
           try {
             const devRes = await api<{ access_token: string; user?: { name: string; role: string } }>("/auth/dev-login", {
@@ -202,8 +227,8 @@ export default function LoginPage() {
             if (devRes.user) {
               userProfile = {
                 name: chosenName,
-                role: devRes.user.role || "employee",
-                wallet: connectedAddress,
+                role: devRes.user.role || (isPavan ? "admin" : "employee"),
+                wallet: effectiveAddress,
               };
             }
           } catch (devErr) {
@@ -211,8 +236,8 @@ export default function LoginPage() {
             jwtToken = "session_" + Math.random().toString(36).substring(2);
             userProfile = {
               name: chosenName,
-              role: "employee",
-              wallet: connectedAddress,
+              role: isPavan ? "admin" : "employee",
+              wallet: effectiveAddress,
             };
           }
         }
@@ -223,17 +248,19 @@ export default function LoginPage() {
         if (typeof window !== "undefined") {
           localStorage.setItem("overvault_user_name", chosenName);
         }
-        try {
-          await api("/auth/me", {
-            method: "PATCH",
-            body: JSON.stringify({ name: chosenName }),
-          });
-        } catch (patchErr) {
-          console.warn("Backend user name sync note:", patchErr);
+        if (!jwtToken.startsWith("session_")) {
+          try {
+            await api("/auth/me", {
+              method: "PATCH",
+              body: JSON.stringify({ name: chosenName }),
+            });
+          } catch (patchErr) {
+            console.warn("Backend user name sync note:", patchErr);
+          }
         }
         qc.setQueryData(qk.me, (old: unknown) => {
           const prev = (old && typeof old === "object" ? old : {}) as Record<string, unknown>;
-          return { ...prev, name: chosenName, wallet_address: connectedAddress };
+          return { ...prev, name: chosenName, wallet_address: effectiveAddress, role: userProfile.role };
         });
         await qc.invalidateQueries({ queryKey: qk.me });
       }
@@ -319,6 +346,25 @@ export default function LoginPage() {
         {/* STEP 1: SELECT WALLET */}
         {step === 1 && (
           <div className="space-y-3.5">
+            {/* Display Name Input */}
+            <div className="p-3.5 bg-surface rounded-xl border border-hairline space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
+                  <UserIcon className="w-3.5 h-3.5 text-primary" />
+                  <span>Your Full Name / Display Name</span>
+                </label>
+                <span className="text-[10px] text-ink-muted-48">Identifies you in vault</span>
+              </div>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Enter your name (e.g. Rahul, Pavan)"
+                autoFocus
+                className="w-full bg-canvas border border-hairline rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted-48/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-sans"
+              />
+            </div>
+
             <p className="text-xs text-ink-muted-48 mb-2">
               Select your cryptographic wallet provider to access your organization&apos;s encrypted vault:
             </p>

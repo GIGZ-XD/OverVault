@@ -1,4 +1,5 @@
 import type { WalletAdapter } from "@/lib/wallet/adapter";
+import { resolveWalletForUser } from "@/lib/wallet/identity";
 
 interface EthereumProvider {
   request: (args: { method: string; params?: unknown[] | Record<string, unknown> }) => Promise<any>;
@@ -36,8 +37,8 @@ export const bridgekeyAdapter: WalletAdapter = {
         console.warn("BridgeKey connect request failed or rejected:", err);
       }
     }
-    // Fallback default testnet account (Asha Rao / u1) if browser extension is not yet mounted
-    return { address: "0xaaa1", network: "MST Testnet" };
+    // Fallback account: Pavan if named Pavan, or unique persistent device wallet
+    return { address: resolveWalletForUser(), network: "MST Testnet" };
   },
 
   disconnect: async () => {
@@ -49,7 +50,7 @@ export const bridgekeyAdapter: WalletAdapter = {
     if (provider) {
       try {
         const accounts = (await provider.request({ method: "eth_accounts" })) as string[];
-        const currentAccount = accounts?.[0] || "0xaaa1";
+        const currentAccount = accounts?.[0] || resolveWalletForUser();
         const sig = (await provider.request({
           method: "personal_sign",
           params: [message, currentAccount],

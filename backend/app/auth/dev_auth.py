@@ -29,7 +29,7 @@ SEED_USERS = [
 def seed_dev_users(db: Session, force: bool = False) -> None:
     # Only seed fake team fixtures during automated testing
     targets = SEED_USERS if (force or get_settings().app_env == "test") else [
-        ("u1", "Pavan", Role.employee, "0xaaa1")
+        ("u1", "Pavan", Role.admin, "0xaaa1")
     ]
     for user_id, name, role, wallet_address in targets:
         if db.get(User, user_id) is None:
