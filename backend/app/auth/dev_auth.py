@@ -18,16 +18,20 @@ from app.services.rbac import Forbidden, NotFound
 
 SEED_USERS = [
     # id,   name,              role,          wallet_address
-    ("u1", "Asha Rao", Role.employee, "0xaaa1"),
+    ("u1", "Pavan", Role.employee, "0xaaa1"),
     ("u2", "Ravi Kumar", Role.manager, "0xbbb2"),
     ("u3", "Meera Iyer", Role.admin, "0xccc3"),
     ("u4", "Kiran Shah", Role.auditor, "0xddd4"),
-    ("u5", "Priya Nair", Role.employee, None),  # Vineeth's addition - see module docstring
+    ("u5", "Priya Nair", Role.employee, None),
 ]
 
 
-def seed_dev_users(db: Session) -> None:
-    for user_id, name, role, wallet_address in SEED_USERS:
+def seed_dev_users(db: Session, force: bool = False) -> None:
+    # Only seed fake team fixtures during automated testing
+    targets = SEED_USERS if (force or get_settings().app_env == "test") else [
+        ("u1", "Pavan", Role.employee, "0xaaa1")
+    ]
+    for user_id, name, role, wallet_address in targets:
         if db.get(User, user_id) is None:
             db.add(
                 User(

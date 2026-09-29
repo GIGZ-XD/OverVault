@@ -21,15 +21,10 @@ export function GrantDialog({
   onGrant,
   fileId,
   files = [],
-  users = [
-    { id: "u2", name: "Ravi Kumar", role: "manager" },
-    { id: "u3", name: "Meera Iyer", role: "admin" },
-    { id: "u4", name: "Kiran Shah", role: "auditor" },
-    { id: "u5", name: "Priya Nair", role: "employee" },
-  ],
+  users = [],
 }: GrantDialogProps) {
   const [selectedFileId, setSelectedFileId] = useState(fileId || files[0]?.id || "f1");
-  const [grantee, setGrantee] = useState(users[0]?.id || "u2");
+  const [grantee, setGrantee] = useState(users[0]?.id || "");
   const [permission, setPermission] = useState("read");
   const [expiresAt, setExpiresAt] = useState("2026-12-31T00:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -41,6 +36,13 @@ export function GrantDialog({
       setSelectedFileId(files[0].id);
     }
   }, [fileId, files, selectedFileId]);
+
+  // Sync grantee when users prop changes
+  React.useEffect(() => {
+    if (users.length > 0 && (!grantee || !users.some((u) => u.id === grantee))) {
+      setGrantee(users[0].id);
+    }
+  }, [users, grantee]);
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -103,14 +105,29 @@ export function GrantDialog({
           <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
             <User className="w-3.5 h-3.5 text-accent" /> Grantee User
           </label>
-          <Select
-            options={users.map((u) => ({
-              label: `${u.name} (${u.role.toUpperCase()})`,
-              value: u.id,
-            }))}
-            value={grantee}
-            onChange={(e) => setGrantee(e.target.value)}
-          />
+          {users.length > 0 ? (
+            <Select
+              options={users.map((u) => ({
+                label: `${u.name} (${u.role.toUpperCase()}) - ID: ${u.id}`,
+                value: u.id,
+              }))}
+              value={grantee}
+              onChange={(e) => setGrantee(e.target.value)}
+            />
+          ) : (
+            <div className="space-y-1">
+              <input
+                type="text"
+                value={grantee}
+                onChange={(e) => setGrantee(e.target.value)}
+                placeholder="Enter teammate User ID (e.g. u2) or wallet address"
+                className="w-full bg-canvas border border-hairline rounded-lg px-3 py-2 text-xs text-ink placeholder:text-ink-muted-48/50 focus:outline-none focus:border-primary font-mono"
+              />
+              <p className="text-[11px] text-ink-muted-48">
+                No other teammates logged in yet. Once your friend connects from their laptop, they will appear in this list.
+              </p>
+            </div>
+          )}
         </div>
 
         {/* Select Permission Level */}

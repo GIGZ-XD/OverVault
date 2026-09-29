@@ -8,18 +8,10 @@ import { KeyRound, Plus, Users, Shield, RefreshCw, UserCheck, AlertCircle } from
 import { api } from "@/lib/api/client";
 import { useToast } from "@/components/ui/toast";
 
-const KNOWN_TEAM_MEMBERS = [
-  { id: "u1", name: "Pavan", role: "employee", wallet: "0xaaa1...MST" },
-  { id: "u2", name: "Ravi Kumar", role: "manager", wallet: "0xbbb2...MST" },
-  { id: "u3", name: "Meera Iyer", role: "admin", wallet: "0xccc3...MST" },
-  { id: "u4", name: "Kiran Shah", role: "auditor", wallet: "0xddd4...MST" },
-  { id: "u5", name: "Priya Nair", role: "employee", wallet: "0xeee5...MST" },
-];
-
 export default function AccessPage() {
   const [grants, setGrants] = useState<PermissionGrant[]>([]);
   const [files, setFiles] = useState<Array<{ id: string; name: string }>>([]);
-  const [users, setUsers] = useState<Array<{ id: string; name: string; role: string; wallet?: string }>>(KNOWN_TEAM_MEMBERS);
+  const [users, setUsers] = useState<Array<{ id: string; name: string; role: string; wallet?: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isGrantOpen, setIsGrantOpen] = useState(false);
@@ -35,7 +27,7 @@ export default function AccessPage() {
           .catch(() => api<Array<{ id: string; name: string; role: string; wallet?: string }>>("/users"))
           .catch(() => []),
       ]);
-      const directory = usersData && usersData.length > 0 ? usersData : KNOWN_TEAM_MEMBERS;
+      const directory = usersData || [];
       setFiles(filesData);
       setUsers(directory);
 
@@ -139,22 +131,39 @@ export default function AccessPage() {
       )}
 
       {/* Users Directory Quick Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {users.map((u) => (
-          <Card key={u.id} className="bg-parchment">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center font-bold text-sm font-mono border border-accent/20">
-                {u.id.toUpperCase()}
-              </div>
-              <div className="flex-1 overflow-hidden">
-                <span className="text-sm font-semibold text-ink block truncate">{u.name}</span>
-                <span className="text-xs text-ink-muted-48 font-mono uppercase tracking-wider block">
-                  {u.role}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold text-ink flex items-center gap-1.5">
+            <Users className="w-4 h-4 text-primary" /> Active Vault Members ({users.length})
+          </h3>
+          <span className="text-xs text-ink-muted-48">Logged-in enterprise identities</span>
+        </div>
+
+        {users.length === 0 ? (
+          <div className="p-6 rounded-[14px] bg-parchment border border-hairline text-center">
+            <p className="text-xs text-ink-muted-48">
+              No other team members have logged in yet. Once your teammates log in from their laptops, they will appear here.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {users.map((u) => (
+              <Card key={u.id} className="bg-parchment">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-accent-soft text-accent flex items-center justify-center font-bold text-sm font-mono border border-accent/20">
+                    {u.id.toUpperCase()}
+                  </div>
+                  <div className="flex-1 overflow-hidden">
+                    <span className="text-sm font-semibold text-ink block truncate">{u.name}</span>
+                    <span className="text-xs text-ink-muted-48 font-mono uppercase tracking-wider block">
+                      {u.role}
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Active Grants Table */}

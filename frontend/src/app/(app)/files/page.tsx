@@ -27,13 +27,7 @@ export default function FilesPage() {
 
   const [grantFile, setGrantFile] = useState<VaultFile | null>(null);
   const [isGrantOpen, setIsGrantOpen] = useState(false);
-  const [users, setUsers] = useState<Array<{ id: string; name: string; role: string }>>([
-    { id: "u1", name: "Pavan", role: "employee" },
-    { id: "u2", name: "Ravi Kumar", role: "manager" },
-    { id: "u3", name: "Meera Iyer", role: "admin" },
-    { id: "u4", name: "Kiran Shah", role: "auditor" },
-    { id: "u5", name: "Priya Nair", role: "employee" },
-  ]);
+  const [users, setUsers] = useState<Array<{ id: string; name: string; role: string }>>([]);
 
   const { toast } = useToast();
 
