@@ -6,6 +6,7 @@ no other backend code changes are needed.
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
