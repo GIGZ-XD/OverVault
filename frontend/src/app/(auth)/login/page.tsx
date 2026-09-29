@@ -13,6 +13,7 @@ import {
   RefreshCw,
   ChevronRight,
   Shield,
+  User as UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -36,10 +37,15 @@ export default function LoginPage() {
   const [nonceMessage, setNonceMessage] = useState<string | null>(null);
   const [authenticatedUser, setAuthenticatedUser] = useState<{ name: string; role: string; wallet?: string } | null>(null);
   const [hasEthereum, setHasEthereum] = useState(false);
+  const [displayName, setDisplayName] = useState("");
 
   useEffect(() => {
-    if (typeof window !== "undefined" && (window as unknown as { ethereum?: unknown }).ethereum) {
-      setHasEthereum(true);
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("overvault_user_name");
+      if (saved) setDisplayName(saved);
+      if ((window as unknown as { ethereum?: unknown }).ethereum) {
+        setHasEthereum(true);
+      }
     }
   }, []);
 
@@ -127,7 +133,8 @@ export default function LoginPage() {
       // Try backend /auth/wallet-login
       let jwtToken: string | null = null;
       const shortAddr = `${connectedAddress.slice(0, 6)}...${connectedAddress.slice(-4)}`;
-      let userProfile = { name: `Operator (${shortAddr})`, role: "operator", wallet: connectedAddress };
+      const chosenName = displayName.trim() || `Operator (${shortAddr})`;
+      let userProfile = { name: chosenName, role: "operator", wallet: connectedAddress };
 
       try {
         const loginRes = await api<{ access_token: string; user?: { name: string; role: string; wallet_address?: string } }>(
@@ -144,7 +151,7 @@ export default function LoginPage() {
           jwtToken = loginRes.access_token;
           if (loginRes.user) {
             userProfile = {
-              name: loginRes.user.name || `Operator (${shortAddr})`,
+              name: chosenName,
               role: loginRes.user.role || "operator",
               wallet: loginRes.user.wallet_address || connectedAddress,
             };
@@ -169,7 +176,7 @@ export default function LoginPage() {
           jwtToken = devRes.access_token;
           if (devRes.user) {
             userProfile = {
-              name: `Operator (${shortAddr})`,
+              name: chosenName,
               role: devRes.user.role || "employee",
               wallet: connectedAddress,
             };
@@ -180,7 +187,7 @@ export default function LoginPage() {
           // so the user who proved their wallet signature can enter the vault smoothly
           jwtToken = "session_" + Math.random().toString(36).substring(2);
           userProfile = {
-            name: `Operator (${shortAddr})`,
+            name: chosenName,
             role: "employee",
             wallet: connectedAddress,
           };
@@ -189,6 +196,21 @@ export default function LoginPage() {
 
       if (jwtToken) {
         setToken(jwtToken);
+        if (typeof window !== "undefined") {
+          localStorage.setItem("overvault_user_name", chosenName);
+        }
+        try {
+          await api("/auth/me", {
+            method: "PATCH",
+            body: JSON.stringify({ name: chosenName }),
+          });
+        } catch (patchErr) {
+          console.warn("Backend user name sync note:", patchErr);
+        }
+        qc.setQueryData(qk.me, (old: unknown) => {
+          const prev = (old && typeof old === "object" ? old : {}) as Record<string, unknown>;
+          return { ...prev, name: chosenName, wallet_address: connectedAddress };
+        });
         await qc.invalidateQueries({ queryKey: qk.me });
       }
 
@@ -338,6 +360,25 @@ export default function LoginPage() {
               <div className="text-sm font-mono font-semibold text-ink break-all">
                 {connectedAddress}
               </div>
+            </div>
+
+            {/* Display Name Input */}
+            <div className="p-3.5 bg-surface rounded-xl border border-hairline space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
+                  <UserIcon className="w-3.5 h-3.5 text-primary" />
+                  <span>Your Full Name / Display Name</span>
+                </label>
+                <span className="text-[10px] text-ink-muted-48">Identifies you in vault</span>
+              </div>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="Enter your name (e.g. Pavan)"
+                autoFocus
+                className="w-full bg-canvas border border-hairline rounded-lg px-3 py-2 text-sm text-ink placeholder:text-ink-muted-48/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all font-sans"
+              />
             </div>
 
             <div className="p-3 bg-bg rounded-xl border border-hairline">

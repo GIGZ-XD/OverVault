@@ -25,6 +25,7 @@ export function AddNodeDialog({ isOpen, onClose, onNodeAdded }: AddNodeDialogPro
   // Manual Form State
   const [name, setName] = useState("");
   const [hostname, setHostname] = useState("");
+  const [ipAddress, setIpAddress] = useState("127.0.0.1");
   const [region, setRegion] = useState("Local Machine (Host Node)");
   const [allocatedGb, setAllocatedGb] = useState("500");
 

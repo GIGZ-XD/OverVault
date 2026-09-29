@@ -36,6 +36,7 @@ from app.schemas.auth import (
     NonceRequest,
     NonceResponse,
     TokenResponse,
+    UpdateProfileRequest,
     UserOut,
     WalletLoginRequest,
 )
@@ -96,3 +97,14 @@ def dev_login(body: DevLoginRequest, db: Session = Depends(get_db)) -> TokenResp
 @router.get("/me", response_model=UserOut)
 def me(user: User = Depends(get_current_user)):
     return user
+
+
+@router.patch("/me", response_model=UserOut)
+def update_profile(body: UpdateProfileRequest, db: Session = Depends(get_db), user: User = Depends(get_current_user)) -> User:
+    """Update display name for the current authenticated user session."""
+    if body.name and body.name.strip():
+        user.name = body.name.strip()
+        db.commit()
+        db.refresh(user)
+    return user
+

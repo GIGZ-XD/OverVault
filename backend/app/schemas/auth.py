@@ -56,3 +56,8 @@ class TokenResponse(BaseModel):
 class DevLoginRequest(BaseModel):
     """AUTH_MODE=dev only - skip wallet for a chosen test user, by id (not email)."""
     user_id: str
+
+
+class UpdateProfileRequest(BaseModel):
+    name: str
+

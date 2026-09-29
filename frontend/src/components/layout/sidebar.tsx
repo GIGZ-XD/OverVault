@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -29,12 +29,20 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
   const pathname = usePathname();
   const { data: summary } = useDashboardSummary();
   const { data: me } = useMe();
+  const [localName, setLocalName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setLocalName(localStorage.getItem("overvault_user_name"));
+    }
+  }, [me]);
+
   const pendingCount = summary?.pending_approvals ?? 0;
 
-  const userName = me?.name || "Enterprise User";
+  const userName = localName || me?.name || "Enterprise User";
   const userRole = me?.role ? `${me.role.charAt(0).toUpperCase() + me.role.slice(1)} Identity` : "Authenticated User";
-  const userInitials = me?.name
-    ? me.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+  const userInitials = userName
+    ? userName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : "OV";
 
   const navItems = [

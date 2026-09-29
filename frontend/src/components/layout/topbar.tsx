@@ -15,16 +15,22 @@ export default function Topbar({ onToggleMobileNav }: TopbarProps) {
   const pathname = usePathname();
   const [theme, setTheme] = useState<"dark" | "light">("light");
   const { data: currentUser } = useMe();
+  const [localName, setLocalName] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setLocalName(localStorage.getItem("overvault_user_name"));
+    }
+  }, [currentUser]);
+
+  const displayName = localName || currentUser?.name || "Operator";
   const userWallet = currentUser?.wallet_address || "0xaaa1";
-  const userInitials = currentUser?.name
-    ? currentUser.name
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
-    : "OV";
+  const userInitials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
 
   useEffect(() => {
     const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
@@ -108,7 +114,7 @@ export default function Topbar({ onToggleMobileNav }: TopbarProps) {
         {/* User Profile Avatar Link */}
         <Link
           href="/settings#profile"
-          title={`Profile: ${currentUser?.name || "User"} (${currentUser?.role || "employee"})`}
+          title={`Profile: ${displayName} (${currentUser?.role || "employee"})`}
           className="flex items-center pl-1 sm:pl-2 border-l border-divider-soft group"
         >
           <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-xs group-hover:scale-105 transition-transform">
