@@ -37,7 +37,13 @@ async function parseError(res: Response): Promise<never> {
   let code: string | undefined;
   try {
     const body = await res.json();
-    if (typeof body?.detail === "string") detail = body.detail;
+    if (typeof body?.detail === "string") {
+      detail = body.detail;
+    } else if (body?.detail && typeof body.detail === "object") {
+      // Wallet-auth error shape: { detail: { code: "...", message: "..." } }
+      if (typeof body.detail.message === "string") detail = body.detail.message;
+      if (typeof body.detail.code === "string") code = body.detail.code;
+    }
     if (typeof body?.code === "string") code = body.code;
   } catch {
     // response wasn't JSON (e.g. a network-level error page) - keep the fallback

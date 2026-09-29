@@ -27,6 +27,27 @@ class AuditEventResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AuditFeedEvent(BaseModel):
+    """Shape returned by GET /audit — the global workspace audit feed.
+
+    Matches the frontend AuditEvent interface in lib/api/types.ts.
+    - file_id / reference_id: the file the event belongs to.
+    - verification: mapped from outbox status (confirmed→verified,
+      pending/submitted→pending, failed→tampered).
+    """
+    id: str
+    event_type: str
+    file_id: str | None = None
+    reference_id: str | None = None
+    actor: str
+    status: str
+    verification: str  # "verified" | "pending" | "tampered"
+    tx_hash: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 class AuditTrailResponse(BaseModel):
     event_type: str
     reference_id: str

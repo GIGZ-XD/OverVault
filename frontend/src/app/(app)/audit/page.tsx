@@ -36,9 +36,9 @@ export default function Page() {
         <p className="text-sm" style={{ color: "var(--text-muted)" }}>
           Proof of workspace activity
         </p>
-        <h1 className="mt-1 text-2xl font-semibold" style={{ color: "var(--text)" }}>
+        <p className="mt-1 text-2xl font-semibold" style={{ color: "var(--text)" }}>
           Audit trail
-        </h1>
+        </p>
         <p className="mt-2 max-w-2xl text-sm" style={{ color: "var(--text-muted)" }}>
           Review who changed each resource, when it happened, and whether the chain record is verified.
         </p>

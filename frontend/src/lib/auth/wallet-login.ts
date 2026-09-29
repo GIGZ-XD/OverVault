@@ -20,6 +20,7 @@
 
 import { wallet } from "@/lib/wallet";
 import { api } from "@/lib/api/client";
+import { setToken, getToken, clearToken } from "@/lib/api/token";
 import {
   WalletUserRejectedError,
   WalletNetworkError,
@@ -155,20 +156,20 @@ export async function walletLogin(): Promise<WalletLoginResult> {
   try {
     return await submitWalletLogin(address, signature);
   } catch (err) {
-    if (err instanceof Error) {
-      const msg = err.message;
-      if (msg.includes("401")) {
-        throw new LoginError(
-          "invalid_signature",
-          "Authentication failed. Please try again."
-        );
-      }
-      if (msg.includes("403")) {
-        throw new LoginError(
-          "address_not_found",
-          "Your wallet address is not registered. Contact your administrator."
-        );
-      }
+    // Use ApiError's status and code fields for precise error mapping
+    const status = (err as { status?: number }).status;
+    const code = (err as { code?: string }).code;
+    if (status === 401 || code === "nonce_expired" || code === "invalid_signature") {
+      throw new LoginError(
+        "invalid_signature",
+        "Authentication failed. Please try again."
+      );
+    }
+    if (status === 403 || code === "address_not_found") {
+      throw new LoginError(
+        "address_not_found",
+        "Your wallet address is not registered. Contact your administrator."
+      );
     }
     throw new LoginError("unknown", "Login failed. Please try again.");
   }
@@ -181,40 +182,36 @@ export async function walletLogin(): Promise<WalletLoginResult> {
 /**
  * Store the token returned by walletLogin().
  *
- * TODO (Vineeth): Replace this with your session/cookie implementation.
- * This placeholder uses sessionStorage to unblock frontend development.
- * The real implementation should use httpOnly cookies or your session store.
+ * Delegates to token.ts (localStorage["overvault.token"]) so the API
+ * client's getToken() call in client.ts can read it on every request.
+ *
+ * NOTE (Vineeth): Replace with your session/cookie implementation by
+ * swapping out token.ts's setToken() — all callers will follow automatically.
  */
 export function storeSession(result: WalletLoginResult): void {
-  if (typeof window !== "undefined") {
-    sessionStorage.setItem("overvault_token", result.access_token);
-  }
+  setToken(result.access_token);
 }
 
 /**
  * Retrieve the current session token.
  *
- * TODO (Vineeth): Replace with your session retrieval mechanism.
+ * NOTE (Vineeth): Replace token.ts.getToken() with your session retrieval mechanism.
  */
 export function getSessionToken(): string | null {
-  if (typeof window !== "undefined") {
-    return sessionStorage.getItem("overvault_token");
-  }
-  return null;
+  return getToken();
 }
 
 /**
  * Clear the current session.
  *
- * TODO (Vineeth): Replace with your session cleanup mechanism.
+ * NOTE (Vineeth): Replace token.ts.clearToken() with your session cleanup mechanism.
  */
 export function clearSession(): void {
-  if (typeof window !== "undefined") {
-    sessionStorage.removeItem("overvault_token");
-  }
+  clearToken();
 }
 
 /** Returns true if a session token is present (does not validate it). */
 export function hasSession(): boolean {
-  return getSessionToken() !== null;
+  return getToken() !== null;
 }
+
