@@ -8,10 +8,18 @@ import { KeyRound, Plus, Users, Shield, RefreshCw, UserCheck, AlertCircle } from
 import { api } from "@/lib/api/client";
 import { useToast } from "@/components/ui/toast";
 
+const KNOWN_TEAM_MEMBERS = [
+  { id: "u1", name: "Pavan", role: "employee", wallet: "0xaaa1...MST" },
+  { id: "u2", name: "Ravi Kumar", role: "manager", wallet: "0xbbb2...MST" },
+  { id: "u3", name: "Meera Iyer", role: "admin", wallet: "0xccc3...MST" },
+  { id: "u4", name: "Kiran Shah", role: "auditor", wallet: "0xddd4...MST" },
+  { id: "u5", name: "Priya Nair", role: "employee", wallet: "0xeee5...MST" },
+];
+
 export default function AccessPage() {
   const [grants, setGrants] = useState<PermissionGrant[]>([]);
   const [files, setFiles] = useState<Array<{ id: string; name: string }>>([]);
-  const [users, setUsers] = useState<Array<{ id: string; name: string; role: string; wallet: string }>>([]);
+  const [users, setUsers] = useState<Array<{ id: string; name: string; role: string; wallet?: string }>>(KNOWN_TEAM_MEMBERS);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isGrantOpen, setIsGrantOpen] = useState(false);
@@ -23,14 +31,30 @@ export default function AccessPage() {
     try {
       const [filesData, usersData] = await Promise.all([
         api<Array<{ id: string; name: string }>>("/files").catch(() => []),
-        api<Array<any>>("/users").catch(() => []),
+        api<Array<{ id: string; name: string; role: string; wallet?: string }>>("/users").catch(() => []),
       ]);
+      const directory = usersData && usersData.length > 0 ? usersData : KNOWN_TEAM_MEMBERS;
       setFiles(filesData);
-      setUsers(usersData);
+      setUsers(directory);
 
       if (filesData.length > 0) {
         const grantsList = await Promise.all(
-          filesData.map((f) => api<PermissionGrant[]>(`/files/${f.id}/permissions`).catch(() => []))
+          filesData.map(async (f) => {
+            try {
+              const perms = await api<PermissionGrant[]>(`/files/${f.id}/permissions`);
+              return perms.map((p) => {
+                const granteeUser = directory.find((u) => u.id === p.grantee);
+                return {
+                  ...p,
+                  file_name: f.name,
+                  grantee_name: granteeUser ? granteeUser.name : p.grantee,
+                };
+              });
+            } catch (err) {
+              console.error(`Failed to fetch permissions for ${f.id}:`, err);
+              return [];
+            }
+          })
         );
         setGrants(grantsList.flat());
       } else {
@@ -144,16 +168,7 @@ export default function AccessPage() {
         isOpen={isGrantOpen}
         onClose={() => setIsGrantOpen(false)}
         files={files}
-        users={
-          users.length > 0
-            ? users
-            : [
-                { id: "u2", name: "Ravi Kumar", role: "manager" },
-                { id: "u3", name: "Meera Iyer", role: "admin" },
-                { id: "u4", name: "Kiran Shah", role: "auditor" },
-                { id: "u5", name: "Priya Nair", role: "employee" },
-              ]
-        }
+        users={users}
         onGrant={handleGrant}
       />
     </div>

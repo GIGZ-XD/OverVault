@@ -135,12 +135,17 @@ export default function FilesPage() {
     }
   };
 
-  const handleGrantAccess = async (grantData: { grantee: string; permission: string; expires_at: string }) => {
-    if (!grantFile) return;
+  const handleGrantAccess = async (grantData: { fileId?: string; grantee: string; permission: string; expires_at: string }) => {
+    const targetFileId = grantData.fileId || grantFile?.id;
+    if (!targetFileId) return;
     try {
-      await api(`/files/${grantFile.id}/permissions`, {
+      await api(`/files/${targetFileId}/permissions`, {
         method: "POST",
-        body: JSON.stringify(grantData),
+        body: JSON.stringify({
+          grantee: grantData.grantee,
+          permission: grantData.permission,
+          expires_at: grantData.expires_at,
+        }),
       });
       toast("success", "Permission Granted", `Issued ${grantData.permission} grant to ${grantData.grantee}`);
     } catch (err) {
@@ -274,6 +279,14 @@ export default function FilesPage() {
         isOpen={isGrantOpen}
         onClose={() => setIsGrantOpen(false)}
         fileId={grantFile?.id}
+        files={files}
+        users={[
+          { id: "u1", name: "Pavan", role: "employee" },
+          { id: "u2", name: "Ravi Kumar", role: "manager" },
+          { id: "u3", name: "Meera Iyer", role: "admin" },
+          { id: "u4", name: "Kiran Shah", role: "auditor" },
+          { id: "u5", name: "Priya Nair", role: "employee" },
+        ]}
         onGrant={handleGrantAccess}
       />
     </div>

@@ -10,10 +10,14 @@ import { Trash2, UserCheck, Clock, Key, KeyRound } from "lucide-react";
 export interface PermissionGrant {
   id: string;
   file_id: string;
+  file_name?: string;
   grantee: string;
+  grantee_name?: string;
   permission: string;
-  expires_at: string;
+  expires_at?: string | null;
   status: "active" | "expired" | "revoked" | string;
+  granted_by?: string;
+  created_at?: string;
 }
 
 export interface GrantsTableProps {
@@ -25,16 +29,27 @@ export interface GrantsTableProps {
 export function GrantsTable({ grants, isLoading, onRevoke }: GrantsTableProps) {
   const columns: Column<PermissionGrant>[] = [
     {
-      header: "Grantee User ID",
+      header: "Grantee & Target Document",
       accessorKey: "grantee",
       cell: (item) => (
-        <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-full bg-indigo-500/20 text-indigo-400 font-mono text-xs flex items-center justify-center font-bold border border-indigo-500/30">
-            {item.grantee.toUpperCase()}
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-primary/10 text-primary font-mono text-xs flex items-center justify-center font-bold border border-primary/20 shrink-0">
+            {item.grantee_name
+              ? item.grantee_name.slice(0, 2).toUpperCase()
+              : item.grantee.slice(0, 2).toUpperCase()}
           </div>
           <div>
-            <span className="font-semibold text-ink text-sm font-mono">{item.grantee}</span>
-            <span className="text-[11px] text-ink-muted-48 block">File ID: {item.file_id}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="font-semibold text-ink text-sm">
+                {item.grantee_name || item.grantee}
+              </span>
+              <span className="text-[11px] font-mono text-ink-muted-48 bg-card px-1.5 py-0.5 rounded border border-hairline">
+                {item.grantee}
+              </span>
+            </div>
+            <span className="text-xs text-primary font-medium flex items-center gap-1 mt-0.5">
+              {item.file_name ? item.file_name : `File ID: ${item.file_id}`}
+            </span>
           </div>
         </div>
       ),
@@ -47,8 +62,8 @@ export function GrantsTable({ grants, isLoading, onRevoke }: GrantsTableProps) {
       header: "Expiration Date",
       cell: (item) => (
         <span className="font-mono text-xs text-ink-muted-48 flex items-center gap-1.5">
-          <Clock className="w-3.5 h-3.5 text-ink-muted-48" />
-          {formatDate(item.expires_at)}
+          <Clock className="w-3.5 h-3.5 text-ink-muted-48 shrink-0" />
+          {item.expires_at ? formatDate(item.expires_at) : "Permanent"}
         </span>
       ),
     },

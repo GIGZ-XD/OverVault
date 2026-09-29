@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_current_user
+from app.models.base import as_utc, utcnow
 from app.models.permission import Permission
 from app.models.user import User
 from app.schemas.permission import GrantRequest, PermissionOut
@@ -14,9 +15,10 @@ router = APIRouter(tags=["permissions"])
 
 
 def permission_out(p: Permission) -> PermissionOut:
+    exp = as_utc(p.expires_at)
     if p.revoked_at is not None:
         status = "revoked"
-    elif p.expires_at is not None and p.expires_at <= datetime.now(timezone.utc):
+    elif exp is not None and exp <= utcnow():
         status = "expired"
     else:
         status = "active"
