@@ -21,6 +21,7 @@ in CI environments that don't have a Hardhat node running:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import os
@@ -122,7 +123,9 @@ class TestHashCommitAndVerify:
     def test_commit_and_verify(self, chain, file_id):
         """commit_hash() stores hash; verify_hash() confirms it."""
         content_hash = "sha256-" + uuid.uuid4().hex
-        result = chain.commit_hash(file_id=file_id, version=1, content_hash=content_hash)
+        result = chain.commit_hash(
+            file_id=file_id, version=1, content_hash=content_hash
+        )
 
         assert result.status == "confirmed"
         assert chain.verify_hash(file_id, 1, content_hash) is True

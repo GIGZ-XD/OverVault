@@ -5,9 +5,7 @@ from app.chain.real import RealChainService
 from app.config import settings
 from app.workers.outbox_worker import process_pending_events
 
-engine = create_engine(
-    settings.database_url.replace("+psycopg", "+psycopg2")
-)
+engine = create_engine(settings.database_url.replace("+psycopg", "+psycopg2"))
 
 with Session(engine) as db:
     chain = RealChainService()
@@ -17,6 +15,4 @@ with Session(engine) as db:
         chain,
     )
 
-    print(
-        f"Worker complete: confirmed={confirmed}, failed={failed}"
-    )
+    print(f"Worker complete: confirmed={confirmed}, failed={failed}")

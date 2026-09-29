@@ -14,5 +14,16 @@ from app.api.routes import (
 )
 
 api_router = APIRouter()
-for module in (health, auth, users, files, versions, permissions, approvals, audit, transaction, dashboard):
+for module in (
+    health,
+    auth,
+    users,
+    files,
+    versions,
+    permissions,
+    approvals,
+    audit,
+    transaction,
+    dashboard,
+):
     api_router.include_router(module.router)

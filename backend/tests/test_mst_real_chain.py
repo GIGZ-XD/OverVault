@@ -21,6 +21,7 @@ The entire test suite is auto-skipped if:
 Mark: pytest.mark.mst_real_chain
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import json
@@ -44,8 +45,14 @@ logger = logging.getLogger(__name__)
 _PROJECT_ROOT = Path(__file__).resolve().parents[2]
 _DEPLOYED_TESTNET_JSON = _PROJECT_ROOT / "contracts" / "deployed.testnet.json"
 
-_MST_RPC_URL = os.environ.get("MST_RPC_URL", "").strip() or os.environ.get("EVM_RPC_URL", "").strip()
-_MST_PRIVATE_KEY = os.environ.get("MST_PRIVATE_KEY", "").strip() or os.environ.get("EVM_PRIVATE_KEY", "").strip()
+_MST_RPC_URL = (
+    os.environ.get("MST_RPC_URL", "").strip()
+    or os.environ.get("EVM_RPC_URL", "").strip()
+)
+_MST_PRIVATE_KEY = (
+    os.environ.get("MST_PRIVATE_KEY", "").strip()
+    or os.environ.get("EVM_PRIVATE_KEY", "").strip()
+)
 
 # Attempt to load contract addresses from env or deployed.testnet.json
 _ADDR_AUDIT = os.environ.get("CONTRACT_ADDRESS_AUDIT", "").strip()
@@ -57,16 +64,22 @@ if (
     not all([_ADDR_AUDIT, _ADDR_INTEGRITY, _ADDR_OWNERSHIP, _ADDR_PERMISSION])
     and _DEPLOYED_TESTNET_JSON.exists()
 ):
-        try:
-            with open(_DEPLOYED_TESTNET_JSON, "r", encoding="utf-8") as f:
-                _data = json.load(f)
-                contracts = _data.get("contracts", {})
-                _ADDR_AUDIT = _ADDR_AUDIT or contracts.get("audit", {}).get("address", "")
-                _ADDR_INTEGRITY = _ADDR_INTEGRITY or contracts.get("integrity", {}).get("address", "")
-                _ADDR_OWNERSHIP = _ADDR_OWNERSHIP or contracts.get("ownership", {}).get("address", "")
-                _ADDR_PERMISSION = _ADDR_PERMISSION or contracts.get("permission", {}).get("address", "")
-        except (OSError, ValueError, KeyError) as exc:
-            logger.debug("Could not load deployed testnet contracts: %s", exc)
+    try:
+        with open(_DEPLOYED_TESTNET_JSON, "r", encoding="utf-8") as f:
+            _data = json.load(f)
+            contracts = _data.get("contracts", {})
+            _ADDR_AUDIT = _ADDR_AUDIT or contracts.get("audit", {}).get("address", "")
+            _ADDR_INTEGRITY = _ADDR_INTEGRITY or contracts.get("integrity", {}).get(
+                "address", ""
+            )
+            _ADDR_OWNERSHIP = _ADDR_OWNERSHIP or contracts.get("ownership", {}).get(
+                "address", ""
+            )
+            _ADDR_PERMISSION = _ADDR_PERMISSION or contracts.get("permission", {}).get(
+                "address", ""
+            )
+    except (OSError, ValueError, KeyError) as exc:
+        logger.debug("Could not load deployed testnet contracts: %s", exc)
 
 # ---------------------------------------------------------------------------
 # Auto-skip check
@@ -100,6 +113,7 @@ if _missing:
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(scope="module")
 def w3() -> Web3:
     """Instantiate a Web3 connection directly to verify the RPC layer."""
@@ -132,6 +146,7 @@ def file_id() -> str:
 # Tests
 # ---------------------------------------------------------------------------
 
+
 class TestMSTConnectionAndSetup:
     def test_rpc_connection(self, w3: Web3):
         """1. Connect to MST RPC: verify node is online and reporting block number."""
@@ -149,10 +164,14 @@ class TestMSTConnectionAndSetup:
             ("Ownership", _ADDR_OWNERSHIP),
             ("Permission", _ADDR_PERMISSION),
         ]:
-            assert Web3.is_address(addr), f"{name} address '{addr}' is not a valid EVM address"
+            assert Web3.is_address(addr), (
+                f"{name} address '{addr}' is not a valid EVM address"
+            )
             checksum_addr = Web3.to_checksum_address(addr)
             code = w3.eth.get_code(checksum_addr)
-            assert len(code) > 0, f"No bytecode found at deployed {name} contract address {checksum_addr}"
+            assert len(code) > 0, (
+                f"No bytecode found at deployed {name} contract address {checksum_addr}"
+            )
 
     def test_create_real_chain_service(self, chain: RealChainService):
         """3. Create RealChainService: verify instantiation and signer address."""
@@ -169,7 +188,9 @@ class TestMSTRealChainOperations:
             ref=file_id,
             actor="sriganesh-blockchain-engineer",
         )
-        assert result.status == "confirmed", f"log_audit transaction failed with status {result.status}"
+        assert result.status == "confirmed", (
+            f"log_audit transaction failed with status {result.status}"
+        )
         assert result.tx_hash.startswith("0x"), "tx_hash must start with '0x'"
         assert len(result.tx_hash) == 66, "tx_hash must be a 66-character hex string"
         assert chain.verify_transaction(result.tx_hash) is True
@@ -182,7 +203,9 @@ class TestMSTRealChainOperations:
             version=1,
             content_hash=content_hash,
         )
-        assert result.status == "confirmed", f"commit_hash transaction failed with status {result.status}"
+        assert result.status == "confirmed", (
+            f"commit_hash transaction failed with status {result.status}"
+        )
         assert result.tx_hash.startswith("0x"), "tx_hash must start with '0x'"
         assert len(result.tx_hash) == 66, "tx_hash must be a 66-character hex string"
         # Confirm hash is queryable from contract
@@ -197,7 +220,9 @@ class TestMSTRealChainOperations:
             owner_address=owner,
             content_hash=content_hash,
         )
-        assert result.status == "confirmed", f"register_ownership failed with status {result.status}"
+        assert result.status == "confirmed", (
+            f"register_ownership failed with status {result.status}"
+        )
         assert result.tx_hash.startswith("0x"), "tx_hash must start with '0x'"
         assert len(result.tx_hash) == 66, "tx_hash must be a 66-character hex string"
         assert chain.verify_transaction(result.tx_hash) is True

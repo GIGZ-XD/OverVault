@@ -10,6 +10,7 @@ living example of how backend services should interact with the chain layer.
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 from app.chain.fake import FakeChainService

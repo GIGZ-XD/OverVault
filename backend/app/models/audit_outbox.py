@@ -11,6 +11,7 @@ This decoupling means:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import uuid

@@ -19,6 +19,7 @@ ABI loading:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import json
@@ -74,24 +75,18 @@ def _load_abi(contract_name: str) -> list[dict]:
 # Config helper — raises an informative error on missing vars
 # ---------------------------------------------------------------------------
 
-def _require_env(name: str, fallback: str | None = None) -> str:
-    """Read a required environment variable or its fallback, raising ValueError if missing.
 
-    Args:
-        name: Primary environment variable name.
-        fallback: Optional fallback variable name (e.g. MST_*).
-
-    Returns:
-        The non-empty string value.
-
-    Raises:
-        ValueError: If neither variable is set or non-empty.
-    """
+def _require_env(name: str, *fallbacks: str) -> str:
+    """Read a required environment variable or its fallbacks, raising ValueError if missing."""
     value = os.environ.get(name, "").strip()
-    if not value and fallback:
-        value = os.environ.get(fallback, "").strip()
     if not value:
-        var_desc = f"'{name}'" if not fallback else f"'{name}' or '{fallback}'"
+        for fb in fallbacks:
+            value = os.environ.get(fb, "").strip()
+            if value:
+                break
+    if not value:
+        all_vars = [f"'{name}'"] + [f"'{fb}'" for fb in fallbacks]
+        var_desc = " or ".join(all_vars)
         raise ValueError(
             f"RealChainService: required environment variable {var_desc} is not set. "
             f"Add it to your .env file or export it before starting the backend."
@@ -127,19 +122,27 @@ class RealChainService:
         contract_address_permission: str | None = None,
     ) -> None:
         # ── Validate configuration ─────────────────────────────────────────
-        resolved_rpc_url = rpc_url or _require_env("EVM_RPC_URL", fallback="MST_RPC_URL")
-        resolved_private_key = private_key or _require_env("EVM_PRIVATE_KEY", fallback="MST_PRIVATE_KEY")
+        resolved_rpc_url = rpc_url or _require_env("MST_RPC_URL", "EVM_RPC_URL")
+        resolved_private_key = private_key or _require_env(
+            "MST_PRIVATE_KEY", "EVM_PRIVATE_KEY"
+        )
         self._addr_audit = Web3.to_checksum_address(
-            contract_address_audit or _require_env("CONTRACT_ADDRESS_AUDIT")
+            contract_address_audit
+            or _require_env("CONTRACT_AUDIT_ADDRESS", "CONTRACT_ADDRESS_AUDIT")
         )
         self._addr_integrity = Web3.to_checksum_address(
-            contract_address_integrity or _require_env("CONTRACT_ADDRESS_INTEGRITY")
+            contract_address_integrity
+            or _require_env("CONTRACT_INTEGRITY_ADDRESS", "CONTRACT_ADDRESS_INTEGRITY")
         )
         self._addr_ownership = Web3.to_checksum_address(
-            contract_address_ownership or _require_env("CONTRACT_ADDRESS_OWNERSHIP")
+            contract_address_ownership
+            or _require_env("CONTRACT_OWNERSHIP_ADDRESS", "CONTRACT_ADDRESS_OWNERSHIP")
         )
         self._addr_permission = Web3.to_checksum_address(
-            contract_address_permission or _require_env("CONTRACT_ADDRESS_PERMISSION")
+            contract_address_permission
+            or _require_env(
+                "CONTRACT_PERMISSION_ADDRESS", "CONTRACT_ADDRESS_PERMISSION"
+            )
         )
 
         # ── Connect to RPC ─────────────────────────────────────────────────
@@ -178,15 +181,21 @@ class RealChainService:
 
     @cached_property
     def _integrity(self) -> Any:
-        return self._w3.eth.contract(address=self._addr_integrity, abi=self._abi_integrity)
+        return self._w3.eth.contract(
+            address=self._addr_integrity, abi=self._abi_integrity
+        )
 
     @cached_property
     def _ownership(self) -> Any:
-        return self._w3.eth.contract(address=self._addr_ownership, abi=self._abi_ownership)
+        return self._w3.eth.contract(
+            address=self._addr_ownership, abi=self._abi_ownership
+        )
 
     @cached_property
     def _permission(self) -> Any:
-        return self._w3.eth.contract(address=self._addr_permission, abi=self._abi_permission)
+        return self._w3.eth.contract(
+            address=self._addr_permission, abi=self._abi_permission
+        )
 
     # -----------------------------------------------------------------------
     # Internal: send a signed transaction and wait for receipt
@@ -224,7 +233,9 @@ class RealChainService:
             if not tx_hash.startswith("0x"):
                 tx_hash = "0x" + tx_hash
 
-            receipt = self._w3.eth.wait_for_transaction_receipt(tx_hash_bytes, timeout=120)
+            receipt = self._w3.eth.wait_for_transaction_receipt(
+                tx_hash_bytes, timeout=120
+            )
             status: TxStatus = "confirmed" if receipt.status == 1 else "failed"
             chain_id = self._w3.eth.chain_id
 
@@ -365,7 +376,9 @@ class RealChainService:
         """
         try:
             return bool(
-                self._integrity.functions.verifyHash(file_id, version, content_hash).call()
+                self._integrity.functions.verifyHash(
+                    file_id, version, content_hash
+                ).call()
             )
         except Exception as exc:  # noqa: BLE001
             logger.warning("verify_hash error for %s v%s: %s", file_id, version, exc)
@@ -410,7 +423,9 @@ class RealChainService:
         try:
             indices: list[int] = self._audit.functions.getEntriesForRef(file_id).call()
         except Exception as exc:  # noqa: BLE001
-            logger.warning("get_audit_trail: getEntriesForRef failed for %s: %s", file_id, exc)
+            logger.warning(
+                "get_audit_trail: getEntriesForRef failed for %s: %s", file_id, exc
+            )
             return []
 
         records: list[AuditRecord] = []
@@ -483,7 +498,7 @@ class RealChainService:
             tx_hash: Transaction hash to look up.
 
         Returns:
-            Dictionary with tx_hash, status, block_number, gas_used,
+            Dictionary with tx_hash, contract, event, status, block_number, gas_used,
             confirmations, chain_id, timestamp.
         """
         try:
@@ -492,8 +507,30 @@ class RealChainService:
             status: TxStatus = "confirmed" if receipt.status == 1 else "failed"
             confirmations = max(1, latest_block - receipt.blockNumber + 1)
             chain_id = self._w3.eth.chain_id
+
+            contract_name = None
+            event_name = None
+            if receipt.to:
+                to_addr = Web3.to_checksum_address(receipt.to)
+                if to_addr == self._addr_audit:
+                    contract_name = "Audit.sol"
+                    event_name = "AuditLogged"
+                elif to_addr == self._addr_integrity:
+                    contract_name = "Integrity.sol"
+                    event_name = "HashCommitted"
+                elif to_addr == self._addr_ownership:
+                    contract_name = "Ownership.sol"
+                    event_name = "OwnershipRegistered"
+                elif to_addr == self._addr_permission:
+                    contract_name = "Permission.sol"
+                    event_name = "PermissionSet"
+                else:
+                    contract_name = to_addr
+
             return {
                 "tx_hash": tx_hash,
+                "contract": contract_name,
+                "event": event_name,
                 "status": status,
                 "block_number": receipt.blockNumber,
                 "gas_used": receipt.gasUsed,
@@ -507,11 +544,16 @@ class RealChainService:
             try:
                 if self._w3.is_connected():
                     chain_id = self._w3.eth.chain_id
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception:
+                logger.debug(
+                    "Unable to retrieve blockchain metadata",
+                    exc_info=True,
+                )
 
             return {
                 "tx_hash": tx_hash,
+                "contract": None,
+                "event": None,
                 "status": "pending",
                 "block_number": None,
                 "gas_used": None,

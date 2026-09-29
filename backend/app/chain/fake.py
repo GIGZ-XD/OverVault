@@ -6,6 +6,7 @@ reset when the process exits.
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -22,6 +23,13 @@ _TX_TYPE_OWNERSHIP = "ownership"
 _TX_TYPE_PERMISSION = "permission"
 _TX_TYPE_HASH = "hash_commitment"
 _TX_TYPE_AUDIT = "audit_event"
+
+_CONTRACT_EVENT_MAP: dict[str, tuple[str, str]] = {
+    _TX_TYPE_OWNERSHIP: ("Ownership.sol", "OwnershipRegistered"),
+    _TX_TYPE_PERMISSION: ("Permission.sol", "PermissionSet"),
+    _TX_TYPE_HASH: ("Integrity.sol", "HashCommitted"),
+    _TX_TYPE_AUDIT: ("Audit.sol", "AuditLogged"),
+}
 
 
 class FakeChainService:
@@ -58,11 +66,14 @@ class FakeChainService:
         gas_used = 21000
         confirmations = 1
         chain_id = 1337
+        contract_name, event_name = _CONTRACT_EVENT_MAP.get(tx_type, (None, None))
 
         self._transactions[tx_hash] = {
             "tx_hash": tx_hash,
             "status": "confirmed",
             "type": tx_type,
+            "contract": contract_name,
+            "event": event_name,
             "data": data,
             "block_number": block_number,
             "gas_used": gas_used,
@@ -103,7 +114,9 @@ class FakeChainService:
         Returns:
             TxResult with a confirmed fake transaction hash.
         """
-        tx_hash = self._make_tx_hash(_TX_TYPE_OWNERSHIP, file_id, owner_address, content_hash)
+        tx_hash = self._make_tx_hash(
+            _TX_TYPE_OWNERSHIP, file_id, owner_address, content_hash
+        )
         self._hashes[(file_id, 1)] = content_hash
         return self._store_tx(
             tx_hash,
@@ -133,11 +146,18 @@ class FakeChainService:
         Returns:
             TxResult with a confirmed fake transaction hash.
         """
-        tx_hash = self._make_tx_hash(_TX_TYPE_PERMISSION, file_id, grantee, action, expiry)
+        tx_hash = self._make_tx_hash(
+            _TX_TYPE_PERMISSION, file_id, grantee, action, expiry
+        )
         return self._store_tx(
             tx_hash,
             _TX_TYPE_PERMISSION,
-            {"file_id": file_id, "grantee": grantee, "action": action, "expiry": expiry},
+            {
+                "file_id": file_id,
+                "grantee": grantee,
+                "action": action,
+                "expiry": expiry,
+            },
         )
 
     # -----------------------------------------------------------------------
@@ -209,7 +229,9 @@ class FakeChainService:
         Returns:
             TxResult with a confirmed fake transaction hash.
         """
-        tx_hash = self._make_tx_hash(_TX_TYPE_AUDIT, event_type, ref, actor, int(time.time()))
+        tx_hash = self._make_tx_hash(
+            _TX_TYPE_AUDIT, event_type, ref, actor, int(time.time())
+        )
         result = self._store_tx(
             tx_hash,
             _TX_TYPE_AUDIT,
@@ -282,6 +304,8 @@ class FakeChainService:
             tx_data = self._transactions[tx_hash]
             return {
                 "tx_hash": tx_hash,
+                "contract": tx_data.get("contract", "Audit.sol"),
+                "event": tx_data.get("event", "AuditLogged"),
                 "status": tx_data.get("status", "confirmed"),
                 "block_number": tx_data.get("block_number", 1001),
                 "gas_used": tx_data.get("gas_used", 21000),
@@ -291,6 +315,8 @@ class FakeChainService:
             }
         return {
             "tx_hash": tx_hash,
+            "contract": None,
+            "event": None,
             "status": "failed",
             "block_number": None,
             "gas_used": None,

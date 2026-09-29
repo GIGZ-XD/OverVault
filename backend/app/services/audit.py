@@ -27,6 +27,7 @@ Separation of concerns::
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 from typing import Any

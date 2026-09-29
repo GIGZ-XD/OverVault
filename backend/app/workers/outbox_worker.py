@@ -25,10 +25,12 @@ Event-type routing:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -38,6 +40,14 @@ from app.models.audit_outbox import AuditOutbox
 from app.services import outbox as outbox_service
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Worker Configuration (from environment with production defaults)
+# ---------------------------------------------------------------------------
+
+DEFAULT_BATCH_SIZE: int = int(os.environ.get("OUTBOX_BATCH_SIZE", "100"))
+DEFAULT_POLL_INTERVAL: float = float(os.environ.get("OUTBOX_POLL_INTERVAL", "5.0"))
+TX_TIMEOUT_SECONDS: int = int(os.environ.get("TX_TIMEOUT_SECONDS", "120"))
 
 # ---------------------------------------------------------------------------
 # Event-type routing keywords
@@ -193,13 +203,39 @@ def process_single_event(
         The updated ``AuditOutbox`` instance (``confirmed`` or ``failed``).
     """
     outbox_service.mark_processing(db, event)
+    category = _classify(event.event_type)
+    contract_target = {
+        "hash": "Integrity.commitHash",
+        "ownership": "Ownership.registerOwnership",
+        "permission": "Permission.grantPermission",
+        "audit": "Audit.logAudit",
+    }.get(category, "Audit.logAudit")
+
     logger.info(
-        "Processing outbox event id=%s type=%s ref=%s attempt=%d",
+        "Processing outbox event id=%s type=%s ref=%s target=%s attempt=%d",
         event.id,
         event.event_type,
         event.reference_id,
+        contract_target,
         event.retry_count + 1,
     )
+
+    # Idempotency check: if tx_hash was already assigned (e.g., worker restart during confirmation),
+    # verify if it is already confirmed on chain to prevent duplicate writes.
+    if event.tx_hash:
+        try:
+            if chain.verify_transaction(event.tx_hash):
+                logger.info(
+                    "Outbox row %s already confirmed on chain with existing tx_hash=%s.",
+                    event.id,
+                    event.tx_hash,
+                )
+                return outbox_service.mark_confirmed(db, event)
+        except Exception:
+            logger.debug(
+                "Transaction verification failed during duplicate check",
+                exc_info=True,
+            )
 
     payload = _parse_payload(event.payload)
 
@@ -207,9 +243,10 @@ def process_single_event(
         tx_result = _call_chain(chain, event, payload)
     except UnknownEventTypeError as exc:
         logger.warning(
-            "Unknown event_type %r for outbox row %s — marking failed (no retry). Error: %s",
+            "Unknown event_type %r for outbox row %s (target=%s) — marking failed (no retry). Error: %s",
             event.event_type,
             event.id,
+            contract_target,
             exc,
         )
         # Force retry_count to MAX_RETRIES so it won't be retried
@@ -218,8 +255,9 @@ def process_single_event(
     except Exception as exc:  # noqa: BLE001
         retry_delay = outbox_service.get_retry_delay(event.retry_count + 1)
         logger.error(
-            "Chain submission failed for outbox row %s (attempt %d, next retry delay %.1fs): %s",
+            "Chain submission failed for outbox row %s (target=%s, attempt=%d, next_retry_delay=%.1fs): error=%s",
             event.id,
+            contract_target,
             event.retry_count + 1,
             retry_delay,
             exc,
@@ -229,7 +267,11 @@ def process_single_event(
     # Submission succeeded — persist tx_hash
     outbox_service.mark_submitted(db, event, tx_hash=tx_result.tx_hash)
     logger.info(
-        "Outbox row %s submitted to chain: tx_hash=%s", event.id, tx_result.tx_hash
+        "Outbox row %s submitted to chain: tx_hash=%s target=%s status=%s",
+        event.id,
+        tx_result.tx_hash,
+        contract_target,
+        tx_result.status,
     )
 
     # Verify the transaction was accepted by the chain
@@ -238,9 +280,10 @@ def process_single_event(
     except Exception as exc:  # noqa: BLE001
         retry_delay = outbox_service.get_retry_delay(event.retry_count + 1)
         logger.error(
-            "Transaction verification failed for tx %s (row %s, next retry delay %.1fs): %s",
+            "Transaction verification failed for tx %s (row %s, attempt=%d, next_retry_delay=%.1fs): error=%s",
             tx_result.tx_hash,
             event.id,
+            event.retry_count + 1,
             retry_delay,
             exc,
         )
@@ -248,14 +291,20 @@ def process_single_event(
 
     if confirmed:
         logger.info(
-            "Outbox row %s confirmed on chain (tx_hash=%s).",
+            "Outbox row %s confirmed on chain (tx_hash=%s, target=%s).",
             event.id,
             tx_result.tx_hash,
+            contract_target,
         )
         return outbox_service.mark_confirmed(db, event)
 
     err_msg = f"Transaction {tx_result.tx_hash} not confirmed on chain"
-    logger.warning("Outbox row %s: %s — marking failed.", event.id, err_msg)
+    logger.warning(
+        "Outbox row %s (tx_hash=%s): %s — marking failed.",
+        event.id,
+        tx_result.tx_hash,
+        err_msg,
+    )
     return outbox_service.mark_failed(db, event, error=err_msg)
 
 
@@ -263,7 +312,7 @@ def process_pending_events(
     db: Session,
     chain: ChainService,
     *,
-    batch_size: int = 100,
+    batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> tuple[int, int]:
     """Fetch and process all pending outbox events in a single batch run.
 
@@ -294,7 +343,9 @@ def process_pending_events(
     if events:
         logger.info(
             "Outbox batch complete: %d confirmed, %d failed (of %d processed).",
-            confirmed_count, failed_count, len(events),
+            confirmed_count,
+            failed_count,
+            len(events),
         )
 
     return confirmed_count, failed_count

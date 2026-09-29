@@ -13,6 +13,7 @@ SQLite threading note:
     ``StaticPool`` so the same in-memory database is visible to the
     test session and the TestClient thread alike.
 """
+
 from __future__ import annotations
 
 import pytest
