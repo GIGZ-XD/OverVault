@@ -286,4 +286,4 @@ Switch personas instantaneously in the **Settings** tab to test role-based capab
 ---
 
 ## 📄 License
-MIT © 2026 OverVault Team (BMSCE)
+MIT © 2026
