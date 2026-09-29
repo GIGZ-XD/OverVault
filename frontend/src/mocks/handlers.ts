@@ -5,6 +5,7 @@ import initialAudit from "@/mocks/fixtures/audit.json";
 import initialPermissions from "@/mocks/fixtures/permissions.json";
 import initialUsers from "@/mocks/fixtures/users.json";
 import initialVersions from "@/mocks/fixtures/versions.json";
+import initialNodes from "@/mocks/fixtures/nodes.json";
 
 // In-memory mutable state for realistic interactive preview without backend
 let filesState = [...initialFiles];
@@ -13,6 +14,14 @@ let auditState = [...initialAudit];
 let permissionsState = [...initialPermissions];
 let usersState = [...initialUsers];
 let versionsState = [...initialVersions];
+let nodesState = [...initialNodes];
+let replicationPolicyState = {
+  replication_factor: 3,
+  min_write_quorum: 2,
+  auto_rebalance: true,
+  heartbeat_interval_sec: 15,
+  encryption_mode: "AES-256-GCM",
+};
 
 export const handlers = [
   // Health check
@@ -230,5 +239,109 @@ export const handlers = [
   // Users
   http.get("*/users", () => {
     return HttpResponse.json(usersState);
+  }),
+
+  // Storage Nodes
+  http.get("*/nodes", () => {
+    return HttpResponse.json(nodesState);
+  }),
+
+  http.post("*/nodes/token", () => {
+    const token = `mst-node-sec-${Math.random().toString(36).substring(2, 15)}`;
+    return HttpResponse.json({
+      token,
+      expires_at: new Date(Date.now() + 86400000).toISOString(),
+      install_command: `curl -sSL https://overvault.mst/install-agent.sh | sh -s -- --token=${token} --cluster=mst-corp-vault`,
+    });
+  }),
+
+  http.post("*/nodes/register", async ({ request }) => {
+    const body = (await request.json()) as any;
+    const newNode = {
+      id: `node-${(body.name || "custom-node").toLowerCase().replace(/\s+/g, "-").slice(0, 20)}-${Math.random().toString(36).substring(2, 6)}`,
+      name: body.name || "New Storage Node",
+      hostname: body.hostname || "storage-node.internal",
+      ip_address: body.ip_address || "192.168.1.50",
+      region: body.region || "Local Edge",
+      allocated_storage_gb: Number(body.allocated_storage_gb) || 500,
+      used_storage_gb: 0.0,
+      status: "online",
+      health_score: 100,
+      latency_ms: Math.floor(Math.random() * 20) + 10,
+      uptime_percentage: 100.0,
+      is_bootstrap: false,
+      agent_version: "v1.2.0",
+      stored_chunks_count: 0,
+      last_heartbeat: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+    };
+    nodesState.push(newNode);
+
+    // Record audit event
+    auditState.unshift({
+      id: `e${Date.now()}`,
+      event_type: "node_register",
+      file_id: newNode.id,
+      file_name: newNode.name,
+      actor: "0xccc3",
+      actor_name: "Meera Iyer (admin)",
+      tx_hash: "0x" + Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+      verification: "verified",
+      timestamp: Math.floor(Date.now() / 1000),
+      detail: `Registered new storage node [${newNode.name}] with ${newNode.allocated_storage_gb}GB allocation`,
+    });
+
+    return HttpResponse.json(newNode, { status: 201 });
+  }),
+
+  http.put("*/nodes/:id/allocation", async ({ params, request }) => {
+    const body = (await request.json()) as { allocated_storage_gb: number };
+    const nodeIndex = nodesState.findIndex((n) => n.id === params.id);
+    if (nodeIndex !== -1) {
+      nodesState[nodeIndex] = {
+        ...nodesState[nodeIndex],
+        allocated_storage_gb: body.allocated_storage_gb,
+      };
+      return HttpResponse.json(nodesState[nodeIndex]);
+    }
+    return new HttpResponse(null, { status: 404 });
+  }),
+
+  http.delete("*/nodes/:id/decommission", ({ params }) => {
+    const target = nodesState.find((n) => n.id === params.id);
+    if (!target) return new HttpResponse(null, { status: 404 });
+    const evacuatedChunks = target.stored_chunks_count || 120;
+    nodesState = nodesState.filter((n) => n.id !== params.id);
+
+    // Record audit event
+    auditState.unshift({
+      id: `e${Date.now()}`,
+      event_type: "node_decommission",
+      file_id: target.id,
+      file_name: target.name,
+      actor: "0xccc3",
+      actor_name: "Meera Iyer (admin)",
+      tx_hash: "0x" + Array.from({ length: 12 }, () => Math.floor(Math.random() * 16).toString(16)).join(""),
+      verification: "verified",
+      timestamp: Math.floor(Date.now() / 1000),
+      detail: `Evacuated ${evacuatedChunks} chunks & safely removed storage node [${target.name}]`,
+    });
+
+    return HttpResponse.json({
+      status: "decommissioned",
+      node_id: params.id,
+      evacuated_chunks: evacuatedChunks,
+      message: `Evacuated ${evacuatedChunks} encrypted chunks and safely removed node.`,
+    });
+  }),
+
+  http.get("*/nodes/replication-policy", () => {
+    return HttpResponse.json(replicationPolicyState);
+  }),
+
+  http.put("*/nodes/replication-policy", async ({ request }) => {
+    const body = (await request.json()) as any;
+    replicationPolicyState = { ...replicationPolicyState, ...body };
+    return HttpResponse.json(replicationPolicyState);
   }),
 ];

@@ -14,6 +14,7 @@ import {
   History,
   HardDrive,
   Cpu,
+  Server,
   X,
 } from "lucide-react";
 import { useDashboardSummary } from "@/lib/api/hooks/useDashboard";
@@ -32,6 +33,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "My Files", href: "/files", icon: FileText },
     { label: "Shared with me", href: "/shared", icon: Share2 },
+    { label: "Storage Nodes", href: "/nodes", icon: Server },
     { label: "Approvals", href: "/approvals", icon: CheckSquare },
     { label: "Audit Trail", href: "/audit", icon: History },
     { label: "Access Control (admin)", href: "/access", icon: Users },

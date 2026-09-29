@@ -27,6 +27,7 @@ export default function Topbar({ onToggleMobileNav }: TopbarProps) {
 
   const getPageTitle = (path: string) => {
     if (path.includes("/files")) return "My Files";
+    if (path.includes("/nodes")) return "Storage Nodes";
     if (path.includes("/approvals")) return "Approvals";
     if (path.includes("/access")) return "Access Control";
     if (path.includes("/audit")) return "Audit Trail";
