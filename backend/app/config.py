@@ -33,7 +33,12 @@ class Settings(BaseSettings):
     # Chain selection is read by Sriganesh's layer; the backend core never calls it.
     chain_mode: str = "fake"  # fake | demo | real
 
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+    ]
 
 
 @lru_cache
