@@ -32,23 +32,20 @@ async function initServices() {
     return mswPromise;
   } else {
     // Real API mode: Ensure we have a valid dev session token for API requests
-    const existing = getToken();
-    if (!existing) {
-      try {
-        const res = await fetch(`${config.apiUrl}/api/auth/dev-login`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: "u1" }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.access_token) {
-            setToken(data.access_token);
-          }
+    try {
+      const res = await fetch(`${config.apiUrl}/api/auth/dev-login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: "u1" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.access_token) {
+          setToken(data.access_token);
         }
-      } catch (err) {
-        console.warn("Auto-authentication with backend failed:", err);
       }
+    } catch (err) {
+      console.warn("Auto-authentication with backend failed:", err);
     }
   }
 }
