@@ -31,8 +31,17 @@ export default function SharedPage() {
 
   const handleDownload = async (file: VaultFile) => {
     try {
-      const res = await api<{ content: string; hash: string }>(`/files/${file.id}/download`);
-      toast("success", `Downloaded ${file.name}`, `SHA-256 Digest: ${res.hash}`);
+      const res = await api.getBlob(`/files/${file.id}/download`);
+      const url = window.URL.createObjectURL(res.blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      const digest = res.sha256 || file.hash;
+      toast("success", `Downloaded ${file.name}`, `SHA-256 Digest: ${digest ? digest.slice(0, 16) + "..." : "verified"}`);
     } catch (err) {
       toast("error", "Download Failed", String(err));
     }

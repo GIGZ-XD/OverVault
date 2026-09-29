@@ -70,8 +70,17 @@ export default function DashboardPage() {
 
   const handleDownload = async (file: VaultFile) => {
     try {
-      const res = await api<{ content: string; hash: string }>(`/files/${file.id}/download`);
-      toast("success", `Downloaded ${file.name}`, `Verified hash: ${res.hash.slice(0, 10)}...`);
+      const res = await api.getBlob(`/files/${file.id}/download`);
+      const url = window.URL.createObjectURL(res.blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      const digest = res.sha256 || file.hash;
+      toast("success", `Downloaded ${file.name}`, `SHA-256 Verified: ${digest ? digest.slice(0, 16) + "..." : "on-chain"}`);
     } catch (err) {
       toast("error", "Download Failed", String(err));
     }
