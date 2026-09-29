@@ -18,7 +18,10 @@ export function useMe() {
 export function useDevLogin() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (email: string) => api.post<TokenResponse>("/auth/dev-login", { email }),
+    mutationFn: (userIdOrEmail: string) => {
+      const user_id = userIdOrEmail.includes("@") ? userIdOrEmail.split("@")[0] : userIdOrEmail;
+      return api.post<TokenResponse>("/auth/dev-login", { user_id });
+    },
     onSuccess: (data) => {
       setToken(data.access_token);
       qc.setQueryData(qk.me, data.user);

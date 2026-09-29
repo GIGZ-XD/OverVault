@@ -21,6 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api/client";
 import { setToken } from "@/lib/api/token";
+import { wallet } from "@/lib/wallet";
 
 interface SeedUser {
   id: string;
@@ -31,10 +32,10 @@ interface SeedUser {
 }
 
 const SEED_USERS: SeedUser[] = [
-  { id: "u1", name: "Asha Rao", role: "employee", wallet: "0xaaa128b94f09c21e", description: "Document upload & access requests" },
-  { id: "u2", name: "Ravi Kumar", role: "manager", wallet: "0xbbb219cf8821a74d", description: "Multi-sig approval review & decisions" },
-  { id: "u3", name: "Meera Iyer", role: "admin", wallet: "0xccc394aa5190b392", description: "Vault security & storage node management" },
-  { id: "u4", name: "Kiran Shah", role: "auditor", wallet: "0xddd4301be67210e1", description: "Immutable audit ledger & proof inspection" },
+  { id: "u1", name: "Asha Rao", role: "employee", wallet: "0xaaa1", description: "Document upload & access requests" },
+  { id: "u2", name: "Ravi Kumar", role: "manager", wallet: "0xbbb2", description: "Multi-sig approval review & decisions" },
+  { id: "u3", name: "Meera Iyer", role: "admin", wallet: "0xccc3", description: "Vault security & storage node management" },
+  { id: "u4", name: "Kiran Shah", role: "auditor", wallet: "0xddd4", description: "Immutable audit ledger & proof inspection" },
 ];
 
 export default function LoginPage() {
@@ -62,9 +63,18 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      let targetAddress = presetWallet || "0xaaa128b94f09c21e";
+      let targetAddress = presetWallet || "0xaaa1";
 
-      if (provider === "metamask" && hasEthereum) {
+      if (provider === "bridgekey") {
+        try {
+          const conn = await wallet.connect();
+          if (conn.address) {
+            targetAddress = conn.address;
+          }
+        } catch (walletErr) {
+          console.warn("BridgeKey adapter connect note:", walletErr);
+        }
+      } else if (provider === "metamask" && hasEthereum) {
         const ethereum = (window as unknown as { ethereum: { request: (args: { method: string }) => Promise<string[]> } }).ethereum;
         const accounts = await ethereum.request({ method: "eth_requestAccounts" });
         if (accounts && accounts.length > 0) {
@@ -105,8 +115,14 @@ export default function LoginPage() {
     try {
       let signature = "0x" + Array.from({ length: 130 }, () => Math.floor(Math.random() * 16).toString(16)).join("");
 
-      // Attempt personal_sign if real browser wallet is active
-      if (selectedProvider === "metamask" && hasEthereum && nonceMessage) {
+      // Attempt personal_sign with BridgeKey or MetaMask if active
+      if (selectedProvider === "bridgekey" && nonceMessage) {
+        try {
+          signature = await wallet.signMessage(nonceMessage);
+        } catch (err: unknown) {
+          console.warn("BridgeKey sign attempt note:", err);
+        }
+      } else if (selectedProvider === "metamask" && hasEthereum && nonceMessage) {
         try {
           const ethereum = (window as unknown as {
             ethereum: { request: (args: { method: string; params: string[] }) => Promise<string> };

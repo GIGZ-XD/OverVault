@@ -31,21 +31,19 @@ async function initServices() {
     }
     return mswPromise;
   } else {
-    // Real API mode: Ensure we have a valid dev session token for API requests
-    try {
-      const res = await fetch(`${config.apiUrl}/api/auth/dev-login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: "u1" }),
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.access_token) {
-          setToken(data.access_token);
+    // Real API mode: Clean up any stale MSW service workers from browser cache
+    if ("serviceWorker" in navigator) {
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          if (reg.active?.scriptURL.includes("mockServiceWorker.js")) {
+            await reg.unregister();
+            console.info("Unregistered stale MSW ServiceWorker:", reg.active.scriptURL);
+          }
         }
+      } catch (swErr) {
+        console.warn("Could not unregister service worker:", swErr);
       }
-    } catch (err) {
-      console.warn("Auto-authentication with backend failed:", err);
     }
   }
 }

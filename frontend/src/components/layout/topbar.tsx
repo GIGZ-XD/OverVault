@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { Search, Bell, Sun, Moon, Menu } from "lucide-react";
 import { shortHash } from "@/lib/utils";
+import { useMe } from "@/lib/api/hooks/useAuth";
 
 export interface TopbarProps {
   onToggleMobileNav?: () => void;
@@ -13,6 +14,17 @@ export interface TopbarProps {
 export default function Topbar({ onToggleMobileNav }: TopbarProps) {
   const pathname = usePathname();
   const [theme, setTheme] = useState<"dark" | "light">("light");
+  const { data: currentUser } = useMe();
+
+  const userWallet = currentUser?.wallet_address || "0xaaa1";
+  const userInitials = currentUser?.name
+    ? currentUser.name
+        .split(" ")
+        .map((n) => n[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : "OV";
 
   useEffect(() => {
     const currentTheme = document.documentElement.getAttribute("data-theme") || "light";
@@ -69,7 +81,7 @@ export default function Topbar({ onToggleMobileNav }: TopbarProps) {
         {/* Wallet Chip: Pill with hairline border (compact on smaller screens) */}
         <div className="hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full border border-hairline bg-parchment text-xs font-mono">
           <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
-          <span className="text-ink font-normal">{shortHash("0xaaa128b94f09c21e")}</span>
+          <span className="text-ink font-normal">{shortHash(userWallet)}</span>
           <span className="text-[10px] uppercase font-semibold text-primary hidden md:inline">
             MST
           </span>
@@ -96,11 +108,11 @@ export default function Topbar({ onToggleMobileNav }: TopbarProps) {
         {/* User Profile Avatar Link */}
         <Link
           href="/settings#profile"
-          title="View User Profile & Identity"
+          title={`Profile: ${currentUser?.name || "User"} (${currentUser?.role || "employee"})`}
           className="flex items-center pl-1 sm:pl-2 border-l border-divider-soft group"
         >
           <div className="w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-xs group-hover:scale-105 transition-transform">
-            AR
+            {userInitials}
           </div>
         </Link>
       </div>
