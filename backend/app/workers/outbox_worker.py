@@ -29,6 +29,8 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import time
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -38,6 +40,14 @@ from app.models.audit_outbox import AuditOutbox
 from app.services import outbox as outbox_service
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Worker Configuration (from environment with production defaults)
+# ---------------------------------------------------------------------------
+
+DEFAULT_BATCH_SIZE: int = int(os.environ.get("OUTBOX_BATCH_SIZE", "100"))
+DEFAULT_POLL_INTERVAL: float = float(os.environ.get("OUTBOX_POLL_INTERVAL", "5.0"))
+TX_TIMEOUT_SECONDS: int = int(os.environ.get("TX_TIMEOUT_SECONDS", "120"))
 
 # ---------------------------------------------------------------------------
 # Event-type routing keywords
@@ -210,6 +220,20 @@ def process_single_event(
         event.retry_count + 1,
     )
 
+    # Idempotency check: if tx_hash was already assigned (e.g., worker restart during confirmation),
+    # verify if it is already confirmed on chain to prevent duplicate writes.
+    if event.tx_hash:
+        try:
+            if chain.verify_transaction(event.tx_hash):
+                logger.info(
+                    "Outbox row %s already confirmed on chain with existing tx_hash=%s.",
+                    event.id,
+                    event.tx_hash,
+                )
+                return outbox_service.mark_confirmed(db, event)
+        except Exception:  # noqa: BLE001
+            pass
+
     payload = _parse_payload(event.payload)
 
     try:
@@ -280,7 +304,7 @@ def process_pending_events(
     db: Session,
     chain: ChainService,
     *,
-    batch_size: int = 100,
+    batch_size: int = DEFAULT_BATCH_SIZE,
 ) -> tuple[int, int]:
     """Fetch and process all pending outbox events in a single batch run.
 
