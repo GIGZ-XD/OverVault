@@ -9,8 +9,9 @@ import { KeyRound, Shield, Calendar, User } from "lucide-react";
 export interface GrantDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onGrant: (grantData: { grantee: string; permission: string; expires_at: string }) => Promise<void>;
+  onGrant: (grantData: { fileId: string; grantee: string; permission: string; expires_at: string }) => Promise<void>;
   fileId?: string;
+  files?: Array<{ id: string; name: string }>;
   users?: Array<{ id: string; name: string; role: string }>;
 }
 
@@ -19,21 +20,33 @@ export function GrantDialog({
   onClose,
   onGrant,
   fileId,
+  files = [],
   users = [
     { id: "u2", name: "Ravi Kumar", role: "manager" },
     { id: "u3", name: "Meera Iyer", role: "admin" },
     { id: "u4", name: "Kiran Shah", role: "auditor" },
+    { id: "u5", name: "Priya Nair", role: "employee" },
   ],
 }: GrantDialogProps) {
+  const [selectedFileId, setSelectedFileId] = useState(fileId || files[0]?.id || "f1");
   const [grantee, setGrantee] = useState(users[0]?.id || "u2");
   const [permission, setPermission] = useState("read");
   const [expiresAt, setExpiresAt] = useState("2026-12-31T00:00");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Sync selectedFileId when files or fileId prop changes
+  React.useEffect(() => {
+    if (fileId) setSelectedFileId(fileId);
+    else if (files.length > 0 && !files.some((f) => f.id === selectedFileId)) {
+      setSelectedFileId(files[0].id);
+    }
+  }, [fileId, files, selectedFileId]);
+
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
       await onGrant({
+        fileId: selectedFileId,
         grantee,
         permission,
         expires_at: new Date(expiresAt).toISOString(),
@@ -49,7 +62,7 @@ export function GrantDialog({
       isOpen={isOpen}
       onClose={onClose}
       title="Grant Document Access Permission"
-      description={`Issue cryptographic permission grant for file ${fileId || ""}`}
+      description="Issue cryptographic permission grant registered on MST Blockchain."
       maxWidth="md"
       footer={
         <>
@@ -68,6 +81,23 @@ export function GrantDialog({
       }
     >
       <div className="space-y-4">
+        {/* Select Target Document */}
+        {files.length > 0 && (
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
+              <Shield className="w-3.5 h-3.5 text-primary" /> Target Document
+            </label>
+            <Select
+              options={files.map((f) => ({
+                label: `${f.name} (ID: ${f.id})`,
+                value: f.id,
+              }))}
+              value={selectedFileId}
+              onChange={(e) => setSelectedFileId(e.target.value)}
+            />
+          </div>
+        )}
+
         {/* Select Grantee */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-ink flex items-center gap-1.5">
@@ -92,7 +122,7 @@ export function GrantDialog({
             options={[
               { label: "Read Access (View & Download)", value: "read" },
               { label: "Write Access (Edit & Upload New Version)", value: "write" },
-              { label: "Admin Access (Full Control & Revocation)", value: "admin" },
+              { label: "Manage Access (Full Governance & Revocation)", value: "manage" },
             ]}
             value={permission}
             onChange={(e) => setPermission(e.target.value)}

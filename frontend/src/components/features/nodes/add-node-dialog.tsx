@@ -214,10 +214,33 @@ export function AddNodeDialog({ isOpen, onClose, onNodeAdded }: AddNodeDialogPro
           </div>
         ) : (
           <form onSubmit={handleManualSubmit} className="space-y-3.5">
+            {/* Localhost quick-fill helper */}
+            <div className="p-3 rounded-[10px] bg-primary/10 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs text-ink">
+              <div className="flex items-center gap-2">
+                <Server className="w-4 h-4 text-primary shrink-0" />
+                <span>Running locally? No domain needed. Use localhost & 127.0.0.1</span>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="text-[11px] h-7 px-2.5 shrink-0"
+                onClick={() => {
+                  setName("Localhost Storage Node 01");
+                  setHostname("localhost:8001");
+                  setIpAddress("127.0.0.1");
+                  setRegion("Local Edge Cluster");
+                  setAllocatedGb("500");
+                }}
+              >
+                Quick Fill Localhost
+              </Button>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
                 label="Node Name"
-                placeholder="e.g. US-West Storage Server 01"
+                placeholder="e.g. Localhost Node 01"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
@@ -225,13 +248,13 @@ export function AddNodeDialog({ isOpen, onClose, onNodeAdded }: AddNodeDialogPro
               <Select
                 label="Geographic Region"
                 options={[
+                  { label: "Local Edge Cluster", value: "Local Edge Cluster" },
+                  { label: "AP-South (Bangalore)", value: "AP-South (Bangalore)" },
                   { label: "US-East (N. Virginia)", value: "US-East (N. Virginia)" },
                   { label: "US-West (Oregon)", value: "US-West (Oregon)" },
                   { label: "EU-Central (Frankfurt)", value: "EU-Central (Frankfurt)" },
                   { label: "EU-West (London)", value: "EU-West (London)" },
-                  { label: "AP-South (Bangalore)", value: "AP-South (Bangalore)" },
                   { label: "AP-East (Tokyo)", value: "AP-East (Tokyo)" },
-                  { label: "Local Edge Cluster", value: "Local Edge Cluster" },
                 ]}
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
@@ -240,15 +263,15 @@ export function AddNodeDialog({ isOpen, onClose, onNodeAdded }: AddNodeDialogPro
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input
-                label="Hostname / FQDN"
-                placeholder="node-04.corp.internal"
+                label="Hostname (or localhost)"
+                placeholder="localhost:8001"
                 value={hostname}
                 onChange={(e) => setHostname(e.target.value)}
                 required
               />
               <Input
-                label="IP Address"
-                placeholder="192.168.1.150"
+                label="IP Address (or 127.0.0.1)"
+                placeholder="127.0.0.1"
                 value={ipAddress}
                 onChange={(e) => setIpAddress(e.target.value)}
                 required

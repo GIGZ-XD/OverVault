@@ -18,6 +18,7 @@ import {
   X,
 } from "lucide-react";
 import { useDashboardSummary } from "@/lib/api/hooks/useDashboard";
+import { useMe } from "@/lib/api/hooks/useAuth";
 
 export interface SidebarProps {
   mobileOpen?: boolean;
@@ -27,7 +28,14 @@ export interface SidebarProps {
 export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
   const { data: summary } = useDashboardSummary();
+  const { data: me } = useMe();
   const pendingCount = summary?.pending_approvals ?? 0;
+
+  const userName = me?.name || "Enterprise User";
+  const userRole = me?.role ? `${me.role.charAt(0).toUpperCase() + me.role.slice(1)} Identity` : "Authenticated User";
+  const userInitials = me?.name
+    ? me.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
+    : "OV";
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -125,12 +133,15 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
           <div className="space-y-1.5">
             <div className="flex justify-between text-[11px] text-ink-muted-48 font-normal">
               <span className="flex items-center gap-1">
-                <HardDrive className="w-3 h-3 text-ink-muted-48" /> Storage
+                <HardDrive className="w-3 h-3 text-ink-muted-48" /> Quota
               </span>
-              <span>1.2 GB / 5 GB</span>
+              <span>{summary ? `${(summary.total_files * 0.15).toFixed(1)} GB / 5 GB` : "0.0 GB / 5 GB"}</span>
             </div>
             <div className="w-full h-1.5 rounded-full bg-divider-soft overflow-hidden">
-              <div className="h-full bg-primary rounded-full w-[24%]" />
+              <div
+                className="h-full bg-primary rounded-full transition-all duration-300"
+                style={{ width: `${Math.min(100, Math.max(4, (summary?.total_files ?? 0) * 3))}%` }}
+              />
             </div>
           </div>
         </div>
@@ -138,12 +149,12 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
         {/* User Card */}
         <div className="flex items-center justify-between pt-1 px-1">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-xs">
-              AR
+            <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-semibold text-xs shadow-sm">
+              {userInitials}
             </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-semibold text-ink leading-tight">Asha Rao</span>
-              <span className="text-[10px] text-ink-muted-48">Enterprise User</span>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-semibold text-ink leading-tight truncate">{userName}</span>
+              <span className="text-[10px] text-ink-muted-48 truncate">{userRole}</span>
             </div>
           </div>
         </div>

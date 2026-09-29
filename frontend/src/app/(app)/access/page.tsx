@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/toast";
 
 export default function AccessPage() {
   const [grants, setGrants] = useState<PermissionGrant[]>([]);
+  const [files, setFiles] = useState<Array<{ id: string; name: string }>>([]);
   const [users, setUsers] = useState<Array<{ id: string; name: string; role: string; wallet: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -20,12 +21,21 @@ export default function AccessPage() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const [grantsData, usersData] = await Promise.all([
-        api<PermissionGrant[]>("/files/f1/permissions").catch(() => []),
+      const [filesData, usersData] = await Promise.all([
+        api<Array<{ id: string; name: string }>>("/files").catch(() => []),
         api<Array<any>>("/users").catch(() => []),
       ]);
-      setGrants(grantsData);
+      setFiles(filesData);
       setUsers(usersData);
+
+      if (filesData.length > 0) {
+        const grantsList = await Promise.all(
+          filesData.map((f) => api<PermissionGrant[]>(`/files/${f.id}/permissions`).catch(() => []))
+        );
+        setGrants(grantsList.flat());
+      } else {
+        setGrants([]);
+      }
     } catch (err) {
       console.error(err);
       setLoadError("Failed to fetch access control directory and grants from API.");
@@ -38,11 +48,15 @@ export default function AccessPage() {
     loadData();
   }, []);
 
-  const handleGrant = async (grantData: { grantee: string; permission: string; expires_at: string }) => {
+  const handleGrant = async (grantData: { fileId: string; grantee: string; permission: string; expires_at: string }) => {
     try {
-      await api("/files/f1/permissions", {
+      await api(`/files/${grantData.fileId}/permissions`, {
         method: "POST",
-        body: JSON.stringify(grantData),
+        body: JSON.stringify({
+          grantee: grantData.grantee,
+          permission: grantData.permission,
+          expires_at: grantData.expires_at,
+        }),
       });
       toast("success", "Permission Issued", `Granted ${grantData.permission} to ${grantData.grantee}`);
       loadData();
@@ -129,8 +143,17 @@ export default function AccessPage() {
       <GrantDialog
         isOpen={isGrantOpen}
         onClose={() => setIsGrantOpen(false)}
-        fileId="f1"
-        users={users}
+        files={files}
+        users={
+          users.length > 0
+            ? users
+            : [
+                { id: "u2", name: "Ravi Kumar", role: "manager" },
+                { id: "u3", name: "Meera Iyer", role: "admin" },
+                { id: "u4", name: "Kiran Shah", role: "auditor" },
+                { id: "u5", name: "Priya Nair", role: "employee" },
+              ]
+        }
         onGrant={handleGrant}
       />
     </div>

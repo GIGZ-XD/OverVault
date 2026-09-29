@@ -22,6 +22,8 @@ import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api/client";
 import { setToken } from "@/lib/api/token";
 import { wallet } from "@/lib/wallet";
+import { useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/keys";
 
 interface SeedUser {
   id: string;
@@ -41,6 +43,7 @@ const SEED_USERS: SeedUser[] = [
 export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
+  const qc = useQueryClient();
 
   const [activeTab, setActiveTab] = useState<"wallet" | "dev">("wallet");
   const [selectedProvider, setSelectedProvider] = useState<"bridgekey" | "metamask" | "mock">("bridgekey");
@@ -170,6 +173,7 @@ export default function LoginPage() {
 
       if (jwtToken) {
         setToken(jwtToken);
+        await qc.invalidateQueries({ queryKey: qk.me });
       }
 
       setAuthenticatedUser(userProfile);
@@ -196,6 +200,7 @@ export default function LoginPage() {
       });
       if (res.access_token) {
         setToken(res.access_token);
+        await qc.invalidateQueries({ queryKey: qk.me });
       }
       setAuthenticatedUser({ name: user.name, role: user.role, wallet: user.wallet });
       setStep(3);

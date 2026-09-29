@@ -40,12 +40,27 @@ export default function DashboardPage() {
     loadDashboard();
   }, []);
 
-  const handleUpload = async (fileData: { name: string; size: number; protection: string }) => {
+  const handleUpload = async (fileData: { name: string; size: number; protection: string; file?: File }) => {
     try {
-      const created = await api<VaultFile>("/files", {
-        method: "POST",
-        body: JSON.stringify(fileData),
-      });
+      let created: VaultFile;
+      if (fileData.file) {
+        const form = new FormData();
+        form.append("upload", fileData.file);
+        form.append("comment", "Uploaded via OverVault Dashboard");
+        created = await api<VaultFile>("/files", {
+          method: "POST",
+          body: form,
+        });
+      } else {
+        const blob = new Blob(["OverVault encrypted payload"], { type: "text/plain" });
+        const form = new FormData();
+        form.append("upload", blob, fileData.name || "document.txt");
+        form.append("comment", "Uploaded via OverVault Dashboard");
+        created = await api<VaultFile>("/files", {
+          method: "POST",
+          body: form,
+        });
+      }
       toast("success", "File Uploaded & Hashed", `Registered ${created.name} on MST Blockchain`);
       loadDashboard();
     } catch (err) {

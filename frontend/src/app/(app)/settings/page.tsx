@@ -11,6 +11,9 @@ import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api/client";
 
 import { setToken } from "@/lib/api/token";
+import { useMe } from "@/lib/api/hooks/useAuth";
+import { useQueryClient } from "@tanstack/react-query";
+import { qk } from "@/lib/api/keys";
 
 export default function SettingsPage() {
   const [apiMode, setApiMode] = useState(config.apiMode);
@@ -19,19 +22,25 @@ export default function SettingsPage() {
   const [isTestingHealth, setIsTestingHealth] = useState(false);
   const [healthResult, setHealthResult] = useState<string | null>(null);
 
-  // Active user identity
-  const [activeUser, setActiveUser] = useState("u1");
-
+  const { data: meUser } = useMe();
+  const qc = useQueryClient();
   const { toast } = useToast();
 
   const users = [
-    { id: "u1", name: "Asha Rao", role: "employee", wallet: "0xaaa128b94f09c21e" },
-    { id: "u2", name: "Ravi Kumar", role: "manager", wallet: "0xbbb219cf8821a74d" },
-    { id: "u3", name: "Meera Iyer", role: "admin", wallet: "0xccc394aa5190b392" },
-    { id: "u4", name: "Kiran Shah", role: "auditor", wallet: "0xddd4301be67210e1" },
+    { id: "u1", name: "Asha Rao", role: "employee", wallet: "0xaaa1" },
+    { id: "u2", name: "Ravi Kumar", role: "manager", wallet: "0xbbb2" },
+    { id: "u3", name: "Meera Iyer", role: "admin", wallet: "0xccc3" },
+    { id: "u4", name: "Kiran Shah", role: "auditor", wallet: "0xddd4" },
   ];
 
-  const currentUser = users.find((u) => u.id === activeUser) || users[0];
+  const activeUserId = meUser?.id || "u1";
+  const currentUser = {
+    id: meUser?.id || "u1",
+    name: meUser?.name || "Asha Rao",
+    role: meUser?.role || "employee",
+    wallet: meUser?.wallet_address || "0xaaa1",
+    email: meUser?.email || "u1@overvault.dev",
+  };
 
   const handleTestHealth = async () => {
     setIsTestingHealth(true);
@@ -52,7 +61,6 @@ export default function SettingsPage() {
   };
 
   const handleSwitchUser = async (userId: string) => {
-    setActiveUser(userId);
     const u = users.find((item) => item.id === userId);
     try {
       const res = await api<{ access_token: string }>("/auth/dev-login", {
@@ -61,6 +69,8 @@ export default function SettingsPage() {
       });
       if (res?.access_token) {
         setToken(res.access_token);
+        await qc.invalidateQueries({ queryKey: qk.me });
+        await qc.refetchQueries({ queryKey: qk.me });
       }
     } catch (e) {
       console.warn("Dev login error:", e);
@@ -117,7 +127,7 @@ export default function SettingsPage() {
                     label: `${u.name} (${u.role})`,
                     value: u.id,
                   }))}
-                  value={activeUser}
+                  value={activeUserId}
                   onChange={(e) => handleSwitchUser(e.target.value)}
                   className="text-xs h-8"
                 />
