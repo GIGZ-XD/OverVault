@@ -9,7 +9,7 @@ Owner: Sriganesh (Blockchain & Audit Engineer).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Any, Literal, Protocol
 
 # ---------------------------------------------------------------------------
 # Shared types
@@ -25,10 +25,20 @@ class TxResult:
     Attributes:
         tx_hash: Unique transaction identifier on the chain (or fake equivalent).
         status:  Current lifecycle state of the transaction.
+        block_number: Block number where the transaction was mined.
+        gas_used: Gas units consumed by the transaction.
+        confirmations: Number of block confirmations.
+        chain_id: EVM network chain ID.
+        timestamp: Unix timestamp when the transaction occurred.
     """
 
     tx_hash: str
     status: TxStatus
+    block_number: int | None = None
+    gas_used: int | None = None
+    confirmations: int | None = None
+    chain_id: int | None = None
+    timestamp: int | None = None
 
 
 @dataclass
@@ -201,5 +211,17 @@ class ChainService(Protocol):
 
         Returns:
             ``True`` if the transaction is confirmed and valid, else ``False``.
+        """
+        ...
+
+    def get_transaction_details(self, tx_hash: str) -> dict[str, Any]:
+        """Retrieve full transaction metadata and confirmation status.
+
+        Args:
+            tx_hash: The transaction hash to look up.
+
+        Returns:
+            Dictionary containing tx_hash, status, block_number, gas_used,
+            confirmations, chain_id, timestamp.
         """
         ...
