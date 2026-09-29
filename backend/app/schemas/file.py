@@ -34,14 +34,17 @@ class ProtectionUpdate(BaseModel):
 
 
 class VerifyResult(BaseModel):
-    """Matches POST /files/{id}/verify in the mock. Until Sriganesh's ChainService
-    is wired in, chain_hash mirrors local_hash and verified is always true."""
+    """Matches POST /files/{id}/verify. Returns on-chain verification status against MST Testnet."""
 
     file_id: str
     local_hash: str
     chain_hash: str
     verified: bool
+    status: str = "VALID"
+    source: str = "MST Testnet"
+    tx_hash: str | None = None
     timestamp: datetime
+
 
 
 class DashboardSummary(BaseModel):

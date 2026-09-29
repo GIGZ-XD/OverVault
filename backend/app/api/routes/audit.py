@@ -66,6 +66,40 @@ def record_audit_event(
         payload=body.payload,
     )
     db.commit()
+
+    # Submit immediately to MST Audit contract
+    try:
+        from app.deps import get_chain_service
+        from app.services import blockchain as blockchain_service
+
+        chain = get_chain_service()
+        tx = chain.log_audit(
+            event_type=body.event_type,
+            ref=body.reference_id,
+            actor=body.actor,
+        )
+        if tx and tx.tx_hash:
+            row = db.get(AuditOutbox, response.id)
+            if row:
+                row.tx_hash = tx.tx_hash
+                row.status = "confirmed"
+            response.tx_hash = tx.tx_hash
+            response.status = "confirmed"
+            blockchain_service.record_tx(
+                db,
+                tx_hash=tx.tx_hash,
+                contract_called="Audit",
+                action="log_audit",
+                reference_id=body.reference_id,
+                status=tx.status,
+            )
+            db.commit()
+    except Exception as exc:
+        import logging
+        logging.getLogger("overvault.audit").warning(
+            "Direct chain audit submission failed, queued in outbox: %s", exc
+        )
+
     return response
 
 

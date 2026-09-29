@@ -19,6 +19,7 @@ def db(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "storage_dir", str(tmp_path / "storage"))
     monkeypatch.setattr(settings, "auth_mode", "dev")
     monkeypatch.setattr(settings, "app_env", "test")
+    monkeypatch.setattr(settings, "chain_mode", "fake")
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)()

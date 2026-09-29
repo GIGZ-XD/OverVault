@@ -13,9 +13,12 @@ logger = logging.getLogger("overvault.outbox_worker")
 
 def run_once(db: Session | None = None, chain=None) -> int:
     """Processes pending audit outbox events and commits them on-chain."""
+    from app.deps import get_chain_service
+    from app.services import blockchain as blockchain_service
+
     own = db is None
     db = db or SessionLocal()
-    chain = chain or FakeChainService()
+    chain = chain or get_chain_service()
     try:
         stmt = (
             select(AuditOutbox)
@@ -34,6 +37,15 @@ def run_once(db: Session | None = None, chain=None) -> int:
                 )
                 row.tx_hash = tx.tx_hash
                 row.status = "confirmed"
+                if tx.tx_hash:
+                    blockchain_service.record_tx(
+                        db,
+                        tx_hash=tx.tx_hash,
+                        contract_called="Audit",
+                        action="log_audit",
+                        reference_id=row.reference_id,
+                        status=tx.status,
+                    )
             except Exception as e:
                 logger.warning("Failed to commit outbox row %s to chain: %s", row.id, e)
                 # Keep as pending for retry

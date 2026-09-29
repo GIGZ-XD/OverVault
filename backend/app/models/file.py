@@ -25,6 +25,7 @@ class File(Base):
     )
     current_version: Mapped[int] = mapped_column(Integer, default=0)
     approved_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    blockchain_tx_hash: Mapped[str | None] = mapped_column(String(66), nullable=True, default=None)
     is_deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)

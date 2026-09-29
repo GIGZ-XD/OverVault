@@ -86,6 +86,49 @@ def grant(
         )
         db.add(perm)
     db.flush()
+
+    # Blockchain anchoring on MST Testnet
+    try:
+        from app.deps import get_chain_service
+        from app.services import blockchain as blockchain_service
+
+        chain = get_chain_service()
+        grantee_addr = grantee.wallet_address or grantee.id
+        expiry_ts = int(expires.timestamp()) if expires else 0
+        tx = chain.record_permission(
+            file_id=file.id,
+            grantee=grantee_addr,
+            action=level.value,
+            expiry=expiry_ts,
+        )
+        if tx and tx.tx_hash:
+            blockchain_service.record_tx(
+                db,
+                tx_hash=tx.tx_hash,
+                contract_called="Permission",
+                action="record_permission",
+                reference_id=file.id,
+                status=tx.status,
+            )
+
+        audit_tx = chain.log_audit(
+            event_type="PERMISSION_GRANTED",
+            ref=file.id,
+            actor=actor.wallet_address or actor.name or actor.id,
+        )
+        if audit_tx and audit_tx.tx_hash:
+            blockchain_service.record_tx(
+                db,
+                tx_hash=audit_tx.tx_hash,
+                contract_called="Audit",
+                action="log_audit",
+                reference_id=file.id,
+                status=audit_tx.status,
+            )
+    except Exception as exc:
+        import logging
+        logging.getLogger("overvault.permissions").warning("Failed to record permission on-chain: %s", exc)
+
     audit.record(
         db,
         actor_id=actor.id,

@@ -75,6 +75,28 @@ def decide(
     if approve:
         file = db.get(File, approval.file_id)
         file.approved_version = approval.version_number
+        try:
+            from app.deps import get_chain_service
+            from app.services import blockchain as blockchain_service
+            chain = get_chain_service()
+            audit_tx = chain.log_audit(
+                event_type="FILE_APPROVED",
+                ref=approval.file_id,
+                actor=reviewer.wallet_address or reviewer.name or reviewer.id,
+            )
+            if audit_tx and audit_tx.tx_hash:
+                blockchain_service.record_tx(
+                    db,
+                    tx_hash=audit_tx.tx_hash,
+                    contract_called="Audit",
+                    action="log_audit",
+                    reference_id=approval.file_id,
+                    status=audit_tx.status,
+                )
+        except Exception as exc:
+            import logging
+            logging.getLogger("overvault.approvals").warning("Failed to log FILE_APPROVED to chain: %s", exc)
+
     audit.record(
         db,
         actor_id=reviewer.id,

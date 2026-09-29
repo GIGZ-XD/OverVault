@@ -34,3 +34,9 @@ def require_roles(*roles: Role):
         return user
 
     return checker
+
+
+def get_chain_service():
+    from app.chain import get_chain_service as _get_chain
+    return _get_chain()
+

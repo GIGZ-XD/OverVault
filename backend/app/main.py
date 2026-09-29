@@ -17,6 +17,9 @@ from app.workers import expiry_job, outbox_worker
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     s = get_settings()
+    if s.chain_mode.lower() in ("real", "testnet", "mst"):
+        from app.chain.validation import validate_mst_startup
+        validate_mst_startup(s)
     if s.auto_create_tables:
         Base.metadata.create_all(engine)
     if s.auth_mode == "dev":
