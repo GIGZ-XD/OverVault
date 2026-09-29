@@ -193,11 +193,20 @@ def process_single_event(
         The updated ``AuditOutbox`` instance (``confirmed`` or ``failed``).
     """
     outbox_service.mark_processing(db, event)
+    category = _classify(event.event_type)
+    contract_target = {
+        "hash": "Integrity.commitHash",
+        "ownership": "Ownership.registerOwnership",
+        "permission": "Permission.grantPermission",
+        "audit": "Audit.logAudit",
+    }.get(category, "Audit.logAudit")
+
     logger.info(
-        "Processing outbox event id=%s type=%s ref=%s attempt=%d",
+        "Processing outbox event id=%s type=%s ref=%s target=%s attempt=%d",
         event.id,
         event.event_type,
         event.reference_id,
+        contract_target,
         event.retry_count + 1,
     )
 
@@ -207,9 +216,10 @@ def process_single_event(
         tx_result = _call_chain(chain, event, payload)
     except UnknownEventTypeError as exc:
         logger.warning(
-            "Unknown event_type %r for outbox row %s — marking failed (no retry). Error: %s",
+            "Unknown event_type %r for outbox row %s (target=%s) — marking failed (no retry). Error: %s",
             event.event_type,
             event.id,
+            contract_target,
             exc,
         )
         # Force retry_count to MAX_RETRIES so it won't be retried
@@ -218,8 +228,9 @@ def process_single_event(
     except Exception as exc:  # noqa: BLE001
         retry_delay = outbox_service.get_retry_delay(event.retry_count + 1)
         logger.error(
-            "Chain submission failed for outbox row %s (attempt %d, next retry delay %.1fs): %s",
+            "Chain submission failed for outbox row %s (target=%s, attempt=%d, next_retry_delay=%.1fs): error=%s",
             event.id,
+            contract_target,
             event.retry_count + 1,
             retry_delay,
             exc,
@@ -229,7 +240,11 @@ def process_single_event(
     # Submission succeeded — persist tx_hash
     outbox_service.mark_submitted(db, event, tx_hash=tx_result.tx_hash)
     logger.info(
-        "Outbox row %s submitted to chain: tx_hash=%s", event.id, tx_result.tx_hash
+        "Outbox row %s submitted to chain: tx_hash=%s target=%s status=%s",
+        event.id,
+        tx_result.tx_hash,
+        contract_target,
+        tx_result.status,
     )
 
     # Verify the transaction was accepted by the chain
@@ -238,9 +253,10 @@ def process_single_event(
     except Exception as exc:  # noqa: BLE001
         retry_delay = outbox_service.get_retry_delay(event.retry_count + 1)
         logger.error(
-            "Transaction verification failed for tx %s (row %s, next retry delay %.1fs): %s",
+            "Transaction verification failed for tx %s (row %s, attempt=%d, next_retry_delay=%.1fs): error=%s",
             tx_result.tx_hash,
             event.id,
+            event.retry_count + 1,
             retry_delay,
             exc,
         )
@@ -248,14 +264,15 @@ def process_single_event(
 
     if confirmed:
         logger.info(
-            "Outbox row %s confirmed on chain (tx_hash=%s).",
+            "Outbox row %s confirmed on chain (tx_hash=%s, target=%s).",
             event.id,
             tx_result.tx_hash,
+            contract_target,
         )
         return outbox_service.mark_confirmed(db, event)
 
     err_msg = f"Transaction {tx_result.tx_hash} not confirmed on chain"
-    logger.warning("Outbox row %s: %s — marking failed.", event.id, err_msg)
+    logger.warning("Outbox row %s (tx_hash=%s): %s — marking failed.", event.id, tx_result.tx_hash, err_msg)
     return outbox_service.mark_failed(db, event, error=err_msg)
 
 
