@@ -1,20 +1,35 @@
 services:
-  postgres:
-    image: postgres:16
+  backend:
+    build: ./backend
+    env_file: .env
     environment:
-      POSTGRES_USER: overvault
-      POSTGRES_PASSWORD: overvault
-      POSTGRES_DB: overvault
-    ports: ["5432:5432"]
-    volumes: ["pgdata:/var/lib/postgresql/data"]
-  minio:
-    image: minio/minio
-    command: server /data --console-address ":9001"
+      DATABASE_URL: sqlite:////data/overvault.db
+      STORAGE_DIR: /data/storage
+      CORS_ORIGINS: '["http://localhost:3000"]'
+    volumes:
+      - overvault-data:/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports: ["9000:9000", "9001:9001"]
-    volumes: ["miniodata:/data"]
+      NEXT_PUBLIC_API_URL: http://backend:8000
+      NEXT_PUBLIC_API_MODE: real
+      NEXT_PUBLIC_WALLET_MODE: mock
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
-  pgdata:
-  miniodata:
+  overvault-data:

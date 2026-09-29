@@ -1,0 +1,9 @@
+services:
+  node-agent:
+    build: .
+    container_name: overvault-node
+    env_file:
+      - config.env
+    volumes:
+      - ./storage:/data/storage
+    restart: always

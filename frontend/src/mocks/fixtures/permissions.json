@@ -1,0 +1,42 @@
+[
+  {
+    "id": "p1",
+    "file_id": "f1",
+    "grantee": "u2",
+    "permission": "read",
+    "expires_at": "2026-12-31T00:00:00Z",
+    "status": "active"
+  },
+  {
+    "id": "p2",
+    "file_id": "f1",
+    "grantee": "u4",
+    "permission": "audit",
+    "expires_at": "2026-11-30T00:00:00Z",
+    "status": "active"
+  },
+  {
+    "id": "p3",
+    "file_id": "f3",
+    "grantee": "u1",
+    "permission": "read",
+    "expires_at": "2026-10-15T00:00:00Z",
+    "status": "active"
+  },
+  {
+    "id": "p4",
+    "file_id": "f4",
+    "grantee": "u3",
+    "permission": "write",
+    "expires_at": "2026-12-31T00:00:00Z",
+    "status": "active"
+  },
+  {
+    "id": "p5",
+    "file_id": "f5",
+    "grantee": "u2",
+    "permission": "read",
+    "expires_at": "2026-08-01T00:00:00Z",
+    "status": "expired"
+  }
+]

@@ -1,10 +1,65 @@
-# Replace with real GitHub usernames
-/frontend/                         @pavan-gh
-/frontend/src/lib/wallet/          @pannaga-gh
-/backend/                          @vineeth-gh
-/backend/app/chain/                @ganesh-gh
-/backend/app/auth/wallet_auth/     @pannaga-gh
-/contracts/                        @ganesh-gh
-/e2e/                              @pannaga-gh
-/docs/                             @pannaga-gh
-/specs/                            @pavan-gh @ganesh-gh @vineeth-gh @pannaga-gh
+# Last matching pattern wins, so specific paths come AFTER general ones.
+# TODO: replace the four placeholder handles below with real GitHub usernames:
+#   sed -i '' 's/@VINEETH_GH/@realname/g' .github/CODEOWNERS   (macOS; repeat per person)
+
+# ---- Default: Vineeth reviews everything unless a rule below says otherwise ----
+*                                              @VINEETH_GH
+
+# ---- Vineeth: backend core, root tooling, specs, ADRs ----
+/.github/                                      @VINEETH_GH
+/backend/                                      @VINEETH_GH
+/docs/adr/                                     @VINEETH_GH
+/specs/                                        @VINEETH_GH
+/frontend/src/lib/api/                         @VINEETH_GH
+
+# ---- Sriganesh: blockchain + audit ----
+/contracts/                                    @SRIGANESH_GH
+/backend/app/chain/                            @SRIGANESH_GH
+/backend/app/models/audit_outbox.py            @SRIGANESH_GH
+/backend/app/services/audit.py                 @SRIGANESH_GH
+/backend/app/services/outbox.py                @SRIGANESH_GH
+/backend/app/workers/outbox_worker.py          @SRIGANESH_GH
+/backend/app/api/routes/audit.py               @SRIGANESH_GH
+/backend/app/schemas/audit.py                  @SRIGANESH_GH
+/backend/tests/test_fake_chain.py              @SRIGANESH_GH
+/backend/tests/test_outbox_worker.py           @SRIGANESH_GH
+/.github/workflows/contracts.yml               @SRIGANESH_GH
+/docs/mstscan-verification.md                  @SRIGANESH_GH
+/docs/mainnet-checklist.md                     @SRIGANESH_GH
+
+# ---- Pannaga: wallet, auth, QA, docs ----
+/docs/                                         @PANNAGA_GH
+/docs/adr/                                     @VINEETH_GH
+/e2e/                                          @PANNAGA_GH
+/.github/workflows/e2e.yml                     @PANNAGA_GH
+/backend/app/auth/wallet_auth/                 @PANNAGA_GH
+/backend/tests/test_wallet_auth.py             @PANNAGA_GH
+/frontend/src/lib/wallet/                      @PANNAGA_GH
+/frontend/src/components/features/audit/       @PANNAGA_GH
+/frontend/src/components/features/signing/     @PANNAGA_GH
+/frontend/src/components/features/dashboard/integrity-widget.tsx  @PANNAGA_GH
+/frontend/src/components/ui/hash-chip.tsx      @PANNAGA_GH
+/frontend/src/components/ui/tx-link.tsx        @PANNAGA_GH
+/frontend/src/components/ui/wallet-chip.tsx    @PANNAGA_GH
+/frontend/src/app/(auth)/login/                @PANNAGA_GH
+/frontend/src/app/(app)/audit/                 @PANNAGA_GH
+
+# ---- Pavan: frontend ----
+/frontend/                                     @PAVAN_GH
+/.github/workflows/frontend.yml                @PAVAN_GH
+# ...but Vineeth/Pannaga carve-outs inside frontend/ must win, so they are repeated:
+/frontend/src/lib/api/                         @VINEETH_GH
+/frontend/src/lib/wallet/                      @PANNAGA_GH
+/frontend/src/components/features/audit/       @PANNAGA_GH
+/frontend/src/components/features/signing/     @PANNAGA_GH
+/frontend/src/components/features/dashboard/integrity-widget.tsx  @PANNAGA_GH
+/frontend/src/components/ui/hash-chip.tsx      @PANNAGA_GH
+/frontend/src/components/ui/tx-link.tsx        @PANNAGA_GH
+/frontend/src/components/ui/wallet-chip.tsx    @PANNAGA_GH
+/frontend/src/app/(auth)/login/                @PANNAGA_GH
+/frontend/src/app/(app)/audit/                 @PANNAGA_GH
+
+# ---- Shared frozen contracts: every named owner must review ----
+/specs/chain_service.py                        @SRIGANESH_GH @VINEETH_GH
+/specs/wallet_auth.md                          @PANNAGA_GH @VINEETH_GH @SRIGANESH_GH
+/specs/signing_payloads.json                   @PANNAGA_GH @VINEETH_GH @SRIGANESH_GH

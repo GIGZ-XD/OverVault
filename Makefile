@@ -1,18 +1,31 @@
-.PHONY: up down backend frontend test-backend test-frontend test-e2e spec-check
+.PHONY: install run test migrate openapi frontend docker up down
 
-up:
-	docker compose up -d
-down:
-	docker compose down
-backend:
+# Backend
+install:
+	cd backend && pip install -r requirements-dev.txt
+run:
 	cd backend && uvicorn app.main:app --reload --port 8000
+test:
+	cd backend && python -m pytest
+migrate:
+	cd backend && alembic upgrade head
+
+# Frontend
 frontend:
 	cd frontend && npm run dev
-test-backend:
-	cd backend && pytest -q
-test-frontend:
-	cd frontend && npm test
-test-e2e:
-	cd e2e && npx playwright test
-spec-check:
-	diff specs/chain_service.py backend/app/chain/base.py
+
+# Docker
+up:
+	docker compose up --build -d
+down:
+	docker compose down
+
+# OpenAPI spec
+openapi:
+	cd backend && python -c "import json,yaml; from app.main import app; print(yaml.safe_dump(app.openapi(), sort_keys=False))" > ../specs/openapi.generated.yaml
+
+# Full stack (dev)
+dev:
+	@echo "Start backend:  make run"
+	@echo "Start frontend: make frontend"
+	@echo "Or use Docker:  make up"

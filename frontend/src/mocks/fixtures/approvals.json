@@ -1,0 +1,30 @@
+[
+  {
+    "id": "a1",
+    "file_id": "f2",
+    "submitted_by": "u1",
+    "status": "pending",
+    "comment": "Updated section 3 confidentiality and GDPR retention clauses"
+  },
+  {
+    "id": "a2",
+    "file_id": "f3",
+    "submitted_by": "u3",
+    "status": "approved",
+    "comment": "Ratified Q4 dividend distributions and governance changes"
+  },
+  {
+    "id": "a3",
+    "file_id": "f4",
+    "submitted_by": "u2",
+    "status": "pending",
+    "comment": "Requested transition from standard to read-only protection tier"
+  },
+  {
+    "id": "a4",
+    "file_id": "f6",
+    "submitted_by": "u1",
+    "status": "rejected",
+    "comment": "Emergency key rollover without secondary multisig approval"
+  }
+]

@@ -1,8 +1,11 @@
 from fastapi import APIRouter
 
-router = APIRouter()
+from app.config import get_settings
+
+router = APIRouter(tags=["health"])
 
 
 @router.get("/health")
 def health():
-    return {"status": "ok"}
+    s = get_settings()
+    return {"status": "ok", "env": s.app_env, "auth_mode": s.auth_mode, "chain_mode": s.chain_mode}

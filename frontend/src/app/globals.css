@@ -2,14 +2,150 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Apple Design System (getdesign.md/apple) Tokens */
 :root {
-  --bg:#F7F8FA; --surface:#FFFFFF; --surface-2:#F0F2F5; --border:#E2E5EA;
-  --text:#101828; --text-muted:#667085; --accent:#4F46E5; --accent-hover:#4338CA; --accent-soft:#EEF0FF;
-  --success:#12B76A; --warning:#F79009; --danger:#F04438; --info:#2E90FA;
+  /* Surfaces */
+  --canvas:           #ffffff;
+  --canvas-parchment: #f5f5f7;
+  --surface-pearl:    #fafafc;
+  --surface-tile-1:   #272729;
+  --surface-tile-2:   #2a2a2c;
+  --surface-tile-3:   #252527;
+  --surface-black:    #000000;
+
+  /* Hairlines & Dividers */
+  --hairline:         #e0e0e0;
+  --divider-soft:     #f0f0f0;
+
+  /* Inks / Text */
+  --ink:              #1d1d1f;
+  --ink-muted-80:     #333333;
+  --ink-muted-48:     #7a7a7a;
+
+  /* Accent — The ONLY interactive color */
+  --primary:          #0066cc;  /* Action Blue */
+  --primary-focus:    #0071e3;  /* 2px border on selected item */
+  --primary-on-dark:  #2997ff;  /* Sky-link blue for dark surfaces */
+  --on-primary:       #ffffff;
+
+  /* Status — for state ONLY, never for style */
+  --danger:           #ff3b30;
+  --success:          #34c759;
+  --warning:          #ff9500;
+  --scrim:            rgba(0, 0, 0, 0.45);
+
+  /* Semantic Theme Mappings */
+  --bg:               var(--canvas-parchment);
+  --surface:          var(--canvas);
+  --surface-2:        var(--canvas-parchment);
+  --border:           var(--hairline);
+  --text:             var(--ink);
+  --text-muted:       var(--ink-muted-48);
+  --accent:           var(--primary);
+  --accent-hover:     var(--primary-focus);
+  --accent-soft:      rgba(0, 102, 204, 0.08);
 }
+
 [data-theme="dark"] {
-  --bg:#0B0F17; --surface:#121826; --surface-2:#1A2233; --border:#26304A;
-  --text:#E7EAF3; --text-muted:#8B95AD; --accent:#7C83FF; --accent-hover:#9AA0FF; --accent-soft:#1C2140;
-  --success:#32D583; --warning:#FDB022; --danger:#F97066; --info:#53B1FD;
+  /* Surfaces */
+  --canvas:           #1c1c1e;
+  --canvas-parchment: #272729;
+  --surface-pearl:    #2a2a2c;
+  --surface-tile-1:   #272729;
+  --surface-tile-2:   #2a2a2c;
+  --surface-tile-3:   #252527;
+  --surface-black:    #000000;
+
+  /* Hairlines & Dividers */
+  --hairline:         #38383a;
+  --divider-soft:     #2c2c2e;
+
+  /* Inks / Text */
+  --ink:              #ffffff;
+  --ink-muted-80:     #e5e5e7;
+  --ink-muted-48:     #8e8e93;
+
+  /* Accent */
+  --primary:          #2997ff;  /* Sky blue on dark */
+  --primary-focus:    #0071e3;
+  --primary-on-dark:  #2997ff;
+  --on-primary:       #ffffff;
+
+  /* Status */
+  --danger:           #ff453a;
+  --success:          #30d158;
+  --warning:          #ffd60a;
+  --scrim:            rgba(0, 0, 0, 0.65);
+
+  /* Semantic Theme Mappings */
+  --bg:               #161618;
+  --surface:          var(--canvas);
+  --surface-2:        var(--canvas-parchment);
+  --border:           var(--hairline);
+  --text:             var(--ink);
+  --text-muted:       var(--ink-muted-48);
+  --accent:           var(--primary);
+  --accent-hover:     #60b2ff;
+  --accent-soft:      rgba(41, 151, 255, 0.12);
 }
-body { background: var(--bg); color: var(--text); }
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Apple typography tracking */
+h1, h2, h3 {
+  letter-spacing: -0.02em;
+}
+
+/* NO CHROME SHADOWS per Apple Design Rule 3 */
+*, ::before, ::after {
+  box-shadow: none !important;
+}
+
+/* Custom Minimal Apple Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--hairline);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-muted-48);
+}
+
+/* Apple Card Token: 14px radius, 1px hairline, surface color change for elevation */
+.vault-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+}
+
+/* Subtle Apple Motion: 150-240ms ease-out, no bouncy chrome */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 180ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 220ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
