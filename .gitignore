@@ -45,3 +45,8 @@ architecture.md
 prd.md
 phases.md
 OverVault_Team_Work_Distribution.pdf
+
+# Hardhat / TypeChain generated files
+contracts/artifacts/
+contracts/cache/
+contracts/types/

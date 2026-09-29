@@ -70,8 +70,12 @@ This script walks through the end-to-end demo flow of OverVault: private encrypt
    - Filter by actor wallet address.
    - Show that every critical action has an immutable record.
 2. **Inspect Chain Proof**:
-   - Click on a transaction hash link to view the commitment on MSTScan.
+   - Click on a transaction hash link to view the commitment on MSTScan (`https://testnet.mstscan.com`).
    - Point out that only the digest (content hash) and reference ID are on-chain — zero private file content.
+   - Real on-chain verified proofs on MST Testnet:
+     - **Audit Event**: [`0xea8afdcaa290847e0ce295b479420469e19b1e42cd4ffe8d39fb8bbc4889669b`](https://testnet.mstscan.com/tx/0xea8afdcaa290847e0ce295b479420469e19b1e42cd4ffe8d39fb8bbc4889669b) on `Audit.sol` (`0x98686687390Bb44D9B8d240A19Ca9b7c26071Fdb`)
+     - **Hash Commitment**: [`0xb620b78eddea792f2d71d4609fbc0cce3f00f163f182d50e7c1f1de34dbd1722`](https://testnet.mstscan.com/tx/0xb620b78eddea792f2d71d4609fbc0cce3f00f163f182d50e7c1f1de34dbd1722) on `Integrity.sol` (`0x5e724C47DCEccC41902f2D129091faf6D1D833AB`)
+     - **Ownership Genesis**: [`0x385674f1d8293b9975330d260090907caa27c5f2d05051c9bf4da43491a591c5`](https://testnet.mstscan.com/tx/0x385674f1d8293b9975330d260090907caa27c5f2d05051c9bf4da43491a591c5) on `Ownership.sol` (`0x53017dd1A227a7Fcf7665C59B7E3360995dCB148`)
 
 ---
 

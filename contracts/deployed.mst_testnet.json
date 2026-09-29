@@ -1,0 +1,23 @@
+{
+  "network": "mst_testnet",
+  "deployedAt": "2026-09-28T20:24:31.914Z",
+  "deployer": "0x8D980974EFc134749E397178359e9356052F5409",
+  "contracts": {
+    "Ownership": {
+      "address": "0x53017dd1A227a7Fcf7665C59B7E3360995dCB148",
+      "deployTx": "0x75bdf0d0cc6960bf8cfef6c8efd6dbddf4f7800ca54582902c82f2275e83a3b7"
+    },
+    "Permission": {
+      "address": "0x6BC2c8B4B373F4a5c3E6Fef36F2E7BA427292b1E",
+      "deployTx": "0x89aac4f4dce6634928bf02018f3aa54c68d355f97e128839437f901f33352907"
+    },
+    "Integrity": {
+      "address": "0x5e724C47DCEccC41902f2D129091faf6D1D833AB",
+      "deployTx": "0x4af02ab8e2dc508def65b308b630c6c032ca5fb6bc220f92562d5d17e9d1fd8f"
+    },
+    "Audit": {
+      "address": "0x98686687390Bb44D9B8d240A19Ca9b7c26071Fdb",
+      "deployTx": "0x31270b0c50c99aae0dd726fedf48d200103e5100760a2d525b5d43b8363d35b1"
+    }
+  }
+}

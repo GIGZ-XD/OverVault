@@ -34,3 +34,27 @@ def require_roles(*roles: Role):
         return user
 
     return checker
+
+
+_chain_service_instance = None
+
+
+def get_chain_service():
+    """Return the active ChainService implementation based on CHAIN_MODE setting.
+
+    - fake: FakeChainService for local development and fast isolated tests
+    - real | mst | testnet: RealChainService connected to MST EVM Testnet
+    """
+    global _chain_service_instance
+    if _chain_service_instance is None:
+        from app.chain.fake import FakeChainService
+        from app.chain.real import RealChainService
+        from app.config import get_settings
+
+        settings = get_settings()
+        if settings.chain_mode.lower() in ("real", "mst", "testnet"):
+            _chain_service_instance = RealChainService()
+        else:
+            _chain_service_instance = FakeChainService()
+    return _chain_service_instance
+

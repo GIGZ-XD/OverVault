@@ -11,7 +11,7 @@ from app.config import get_settings
 from app.db import SessionLocal, engine
 from app.models import Base
 from app.services.rbac import DomainError
-from app.workers import expiry_job
+from app.workers import expiry_job, outbox_worker
 
 
 @asynccontextmanager
@@ -22,10 +22,13 @@ async def lifespan(app: FastAPI):
     if s.auth_mode == "dev":
         with SessionLocal() as db:
             dev_auth.seed_dev_users(db)
-    task = asyncio.create_task(expiry_job.run_forever(s.expiry_job_interval_seconds)) if s.run_expiry_job else None
+    expiry_task = asyncio.create_task(expiry_job.run_forever(s.expiry_job_interval_seconds)) if s.run_expiry_job else None
+    outbox_task = asyncio.create_task(outbox_worker.run_forever(s.outbox_worker_interval_seconds)) if s.run_outbox_worker else None
     yield
-    if task:
-        task.cancel()
+    if expiry_task:
+        expiry_task.cancel()
+    if outbox_task:
+        outbox_task.cancel()
 
 
 def create_app() -> FastAPI:
