@@ -24,7 +24,16 @@ export default function Topbar({ onToggleMobileNav }: TopbarProps) {
   }, [currentUser]);
 
   const displayName = localName || currentUser?.name || "Operator";
-  const userWallet = currentUser?.wallet_address || "0xaaa1";
+  const isPavan =
+    displayName.toLowerCase().includes("pavan") ||
+    Boolean(currentUser?.name && currentUser.name.toLowerCase().includes("pavan")) ||
+    currentUser?.id === "u1" ||
+    currentUser?.wallet_address?.toLowerCase() === "0xaaa1";
+
+  const userWallet = isPavan
+    ? (currentUser?.wallet_address || "0xaaa1")
+    : (currentUser?.wallet_address && currentUser.wallet_address !== "0xaaa1" ? currentUser.wallet_address : null);
+
   const userInitials = displayName
     .split(" ")
     .map((n) => n[0])
@@ -84,14 +93,16 @@ export default function Topbar({ onToggleMobileNav }: TopbarProps) {
           />
         </div>
 
-        {/* Wallet Chip: Pill with hairline border (compact on smaller screens) */}
-        <div className="hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full border border-hairline bg-parchment text-xs font-mono">
-          <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
-          <span className="text-ink font-normal">{shortHash(userWallet)}</span>
-          <span className="text-[10px] uppercase font-semibold text-primary hidden md:inline">
-            MST
-          </span>
-        </div>
+        {/* Wallet Chip: Pill with hairline border (Only shown when wallet exists) */}
+        {userWallet && (
+          <div className="hidden sm:flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-full border border-hairline bg-parchment text-xs font-mono">
+            <span className="w-1.5 h-1.5 rounded-full bg-success shrink-0" />
+            <span className="text-ink font-normal">{shortHash(userWallet)}</span>
+            <span className="text-[10px] uppercase font-semibold text-primary hidden md:inline">
+              MST
+            </span>
+          </div>
+        )}
 
         {/* Theme Toggle */}
         <button

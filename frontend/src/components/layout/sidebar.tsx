@@ -45,6 +45,12 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
     ? userName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : "OV";
 
+  const isPavan =
+    userName.toLowerCase().includes("pavan") ||
+    (me?.name && me.name.toLowerCase().includes("pavan")) ||
+    me?.id === "u1" ||
+    me?.wallet_address?.toLowerCase() === "0xaaa1";
+
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
     { label: "My Files", href: "/files", icon: FileText },
@@ -52,7 +58,7 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
     { label: "Storage Nodes", href: "/nodes", icon: Server },
     { label: "Approvals", href: "/approvals", icon: CheckSquare },
     { label: "Audit Trail", href: "/audit", icon: History },
-    { label: "Access Control (admin)", href: "/access", icon: Users },
+    ...(isPavan ? [{ label: "Access Control (admin)", href: "/access", icon: Users }] : []),
     { label: "Settings", href: "/settings", icon: Settings },
   ];
 

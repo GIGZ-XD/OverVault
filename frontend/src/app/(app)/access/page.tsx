@@ -4,11 +4,28 @@ import { GrantsTable, PermissionGrant } from "@/components/features/access/grant
 import { GrantDialog } from "@/components/features/access/grant-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { KeyRound, Plus, Users, Shield, RefreshCw, UserCheck, AlertCircle } from "lucide-react";
+import { KeyRound, Plus, Users, Shield, RefreshCw, UserCheck, AlertCircle, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api/client";
 import { useToast } from "@/components/ui/toast";
+import { useMe } from "@/lib/api/hooks/useAuth";
+import Link from "next/link";
 
 export default function AccessPage() {
+  const { data: me, isLoading: isAuthLoading } = useMe();
+  const [localName, setLocalName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setLocalName(localStorage.getItem("overvault_user_name"));
+    }
+  }, [me]);
+
+  const isPavan =
+    (localName && localName.toLowerCase().includes("pavan")) ||
+    Boolean(me?.name && me.name.toLowerCase().includes("pavan")) ||
+    me?.id === "u1" ||
+    me?.wallet_address?.toLowerCase() === "0xaaa1";
+
   const [grants, setGrants] = useState<PermissionGrant[]>([]);
   const [files, setFiles] = useState<Array<{ id: string; name: string }>>([]);
   const [users, setUsers] = useState<Array<{ id: string; name: string; role: string; wallet?: string }>>([]);
@@ -92,6 +109,29 @@ export default function AccessPage() {
       toast("error", "Revocation Failed", String(err));
     }
   };
+
+  if (!isAuthLoading && !isPavan) {
+    return (
+      <div className="py-20 text-center space-y-4 max-w-md mx-auto animate-fade-in">
+        <div className="w-14 h-14 rounded-full bg-rose-500/10 text-rose-500 flex items-center justify-center mx-auto border border-rose-500/20">
+          <ShieldAlert className="w-7 h-7" />
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-ink">Access Restricted</h2>
+          <p className="text-xs text-ink-muted-48 mt-1.5 leading-relaxed">
+            Only Pavan (Admin) is authorized to access the Access Control & Role Grants console.
+          </p>
+        </div>
+        <div className="pt-2">
+          <Link href="/dashboard">
+            <Button variant="primary" size="sm">
+              Return to Dashboard
+            </Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
