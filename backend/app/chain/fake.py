@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import time
+from typing import Any
 
 from app.chain.base import AuditRecord, TxResult, TxStatus
 
@@ -51,15 +52,33 @@ class FakeChainService:
         return "0x" + hashlib.sha256(raw).hexdigest()[:40]
 
     def _store_tx(self, tx_hash: str, tx_type: str, data: dict) -> TxResult:
-        """Persist a fake transaction and return a TxResult."""
+        """Persist a fake transaction and return a TxResult with rich metadata."""
+        now_ts = int(time.time())
+        block_number = 1000 + len(self._transactions)
+        gas_used = 21000
+        confirmations = 1
+        chain_id = 1337
+
         self._transactions[tx_hash] = {
             "tx_hash": tx_hash,
             "status": "confirmed",
             "type": tx_type,
             "data": data,
-            "timestamp": int(time.time()),
+            "block_number": block_number,
+            "gas_used": gas_used,
+            "confirmations": confirmations,
+            "chain_id": chain_id,
+            "timestamp": now_ts,
         }
-        return TxResult(tx_hash=tx_hash, status="confirmed")
+        return TxResult(
+            tx_hash=tx_hash,
+            status="confirmed",
+            block_number=block_number,
+            gas_used=gas_used,
+            confirmations=confirmations,
+            chain_id=chain_id,
+            timestamp=now_ts,
+        )
 
     # -----------------------------------------------------------------------
     # Ownership
@@ -248,3 +267,34 @@ class FakeChainService:
             ``True`` if the transaction is known and confirmed, else ``False``.
         """
         return self.get_tx_status(tx_hash) == "confirmed"
+
+    def get_transaction_details(self, tx_hash: str) -> dict[str, Any]:
+        """Retrieve full transaction metadata and confirmation status.
+
+        Args:
+            tx_hash: The transaction hash to query.
+
+        Returns:
+            Dictionary containing tx_hash, status, block_number, gas_used,
+            confirmations, chain_id, timestamp.
+        """
+        if tx_hash in self._transactions:
+            tx_data = self._transactions[tx_hash]
+            return {
+                "tx_hash": tx_hash,
+                "status": tx_data.get("status", "confirmed"),
+                "block_number": tx_data.get("block_number", 1001),
+                "gas_used": tx_data.get("gas_used", 21000),
+                "confirmations": tx_data.get("confirmations", 1),
+                "chain_id": tx_data.get("chain_id", 1337),
+                "timestamp": tx_data.get("timestamp", int(time.time())),
+            }
+        return {
+            "tx_hash": tx_hash,
+            "status": "failed",
+            "block_number": None,
+            "gas_used": None,
+            "confirmations": 0,
+            "chain_id": 1337,
+            "timestamp": None,
+        }

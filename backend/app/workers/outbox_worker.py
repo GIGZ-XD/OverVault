@@ -173,11 +173,12 @@ def process_single_event(
     """Process one pending outbox event end-to-end.
 
     Steps:
-    1. Parse the stored JSON payload.
-    2. Route the event to the correct ``ChainService`` method.
-    3. Save the returned ``tx_hash`` and mark the event ``submitted``.
-    4. Call ``chain.verify_transaction(tx_hash)`` to confirm on-chain.
-    5. Mark the event ``confirmed`` if the tx is valid, or ``failed`` otherwise.
+    1. Mark outbox row as ``processing``.
+    2. Parse the stored JSON payload.
+    3. Route the event to the correct ``ChainService`` method.
+    4. Save the returned ``tx_hash`` and mark the event ``submitted``.
+    5. Call ``chain.verify_transaction(tx_hash)`` to confirm on-chain.
+    6. Mark the event ``confirmed`` if the tx is valid, or ``failed`` otherwise.
 
     On any exception during chain submission, the event is marked ``failed``
     (which increments ``retry_count``; the outbox service handles promotion to
@@ -191,24 +192,39 @@ def process_single_event(
     Returns:
         The updated ``AuditOutbox`` instance (``confirmed`` or ``failed``).
     """
+    outbox_service.mark_processing(db, event)
+    logger.info(
+        "Processing outbox event id=%s type=%s ref=%s attempt=%d",
+        event.id,
+        event.event_type,
+        event.reference_id,
+        event.retry_count + 1,
+    )
+
     payload = _parse_payload(event.payload)
 
     try:
         tx_result = _call_chain(chain, event, payload)
-    except UnknownEventTypeError:
+    except UnknownEventTypeError as exc:
         logger.warning(
-            "Unknown event_type %r for outbox row %s — marking failed (no retry).",
+            "Unknown event_type %r for outbox row %s — marking failed (no retry). Error: %s",
             event.event_type,
             event.id,
+            exc,
         )
         # Force retry_count to MAX_RETRIES so it won't be retried
         event.retry_count = outbox_service.MAX_RETRIES - 1
-        return outbox_service.mark_failed(db, event)
+        return outbox_service.mark_failed(db, event, error=str(exc))
     except Exception as exc:  # noqa: BLE001
+        retry_delay = outbox_service.get_retry_delay(event.retry_count + 1)
         logger.error(
-            "Chain submission failed for outbox row %s: %s", event.id, exc
+            "Chain submission failed for outbox row %s (attempt %d, next retry delay %.1fs): %s",
+            event.id,
+            event.retry_count + 1,
+            retry_delay,
+            exc,
         )
-        return outbox_service.mark_failed(db, event)
+        return outbox_service.mark_failed(db, event, error=str(exc))
 
     # Submission succeeded — persist tx_hash
     outbox_service.mark_submitted(db, event, tx_hash=tx_result.tx_hash)
@@ -220,21 +236,27 @@ def process_single_event(
     try:
         confirmed = chain.verify_transaction(tx_result.tx_hash)
     except Exception as exc:  # noqa: BLE001
+        retry_delay = outbox_service.get_retry_delay(event.retry_count + 1)
         logger.error(
-            "Transaction verification failed for tx %s (row %s): %s",
-            tx_result.tx_hash, event.id, exc,
+            "Transaction verification failed for tx %s (row %s, next retry delay %.1fs): %s",
+            tx_result.tx_hash,
+            event.id,
+            retry_delay,
+            exc,
         )
-        return outbox_service.mark_failed(db, event)
+        return outbox_service.mark_failed(db, event, error=str(exc))
 
     if confirmed:
-        logger.info("Outbox row %s confirmed on chain.", event.id)
+        logger.info(
+            "Outbox row %s confirmed on chain (tx_hash=%s).",
+            event.id,
+            tx_result.tx_hash,
+        )
         return outbox_service.mark_confirmed(db, event)
 
-    logger.warning(
-        "Transaction %s not confirmed for outbox row %s — marking failed.",
-        tx_result.tx_hash, event.id,
-    )
-    return outbox_service.mark_failed(db, event)
+    err_msg = f"Transaction {tx_result.tx_hash} not confirmed on chain"
+    logger.warning("Outbox row %s: %s — marking failed.", event.id, err_msg)
+    return outbox_service.mark_failed(db, event, error=err_msg)
 
 
 def process_pending_events(

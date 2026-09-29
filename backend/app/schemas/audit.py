@@ -113,3 +113,20 @@ class AuditTrailResponse(BaseModel):
     created_at: datetime = Field(..., description="UTC timestamp when the event was recorded.")
 
     model_config = {"from_attributes": True}
+
+
+class AuditVerifyResponse(BaseModel):
+    """Verification summary for a file's integrity and blockchain status.
+
+    Returned by ``GET /audit/{file_id}/verify``.
+    """
+
+    file_id: str = Field(..., description="Target file identifier.")
+    integrity: str = Field(..., description="Integrity verification status: 'verified', 'unverified', or 'pending'.")
+    ownership: str = Field(..., description="Ownership verification status: 'verified', 'unverified', or 'pending'.")
+    audit_events: int = Field(..., description="Total count of audit events recorded for the file.")
+    latest_transaction: str | None = Field(
+        default=None,
+        description="Most recent on-chain transaction hash for this file.",
+    )
+

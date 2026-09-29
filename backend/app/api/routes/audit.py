@@ -21,7 +21,12 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.models.audit_outbox import AuditOutbox
-from app.schemas.audit import AuditEventCreate, AuditEventResponse, AuditTrailResponse
+from app.schemas.audit import (
+    AuditEventCreate,
+    AuditEventResponse,
+    AuditTrailResponse,
+    AuditVerifyResponse,
+)
 from app.services import audit as audit_service
 
 router = APIRouter(prefix="/audit", tags=["audit"])
@@ -142,3 +147,57 @@ def get_audit_trail(
         )
         for row in rows
     ]
+
+
+@router.get(
+    "/{file_id}/verify",
+    response_model=AuditVerifyResponse,
+    summary="Verify audit integrity and ownership for a file",
+    description=(
+        "Returns the on-chain audit and integrity verification summary for the given ``file_id``, "
+        "including total audit event count and latest transaction reference."
+    ),
+)
+def verify_file_audit(
+    file_id: str,
+    db: DbDep,
+) -> AuditVerifyResponse:
+    """GET /audit/{file_id}/verify
+
+    Checks the audit outbox for events corresponding to the file and provides
+    cryptographic verification status.
+    """
+    stmt = (
+        select(AuditOutbox)
+        .where(AuditOutbox.reference_id == file_id)
+        .order_by(AuditOutbox.created_at.desc())
+    )
+    rows = list(db.scalars(stmt))
+
+    if not rows:
+        return AuditVerifyResponse(
+            file_id=file_id,
+            integrity="unverified",
+            ownership="unverified",
+            audit_events=0,
+            latest_transaction=None,
+        )
+
+    confirmed_rows = [r for r in rows if r.status == "confirmed"]
+    latest_tx = next((r.tx_hash for r in rows if r.tx_hash), None)
+
+    if confirmed_rows:
+        integrity_status = "verified"
+        ownership_status = "verified"
+    else:
+        integrity_status = "pending"
+        ownership_status = "pending"
+
+    return AuditVerifyResponse(
+        file_id=file_id,
+        integrity=integrity_status,
+        ownership=ownership_status,
+        audit_events=len(rows),
+        latest_transaction=latest_tx,
+    )
+

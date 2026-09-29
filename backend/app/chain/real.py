@@ -24,6 +24,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import time
 from functools import cached_property
 from pathlib import Path
 from typing import Any
@@ -225,17 +226,24 @@ class RealChainService:
 
             receipt = self._w3.eth.wait_for_transaction_receipt(tx_hash_bytes, timeout=120)
             status: TxStatus = "confirmed" if receipt.status == 1 else "failed"
+            chain_id = self._w3.eth.chain_id
 
             logger.info(
-                "Transaction completed tx=%s status=%s block=%s",
+                "Transaction completed tx=%s status=%s block=%s gas=%s",
                 tx_hash,
                 status,
                 receipt.blockNumber,
+                receipt.gasUsed,
             )
 
             return TxResult(
                 tx_hash=tx_hash,
                 status=status,
+                block_number=receipt.blockNumber,
+                gas_used=receipt.gasUsed,
+                confirmations=1,
+                chain_id=chain_id,
+                timestamp=int(time.time()),
             )
 
         except ContractLogicError as exc:
@@ -467,3 +475,47 @@ class RealChainService:
             ``True`` if the transaction is confirmed, ``False`` otherwise.
         """
         return self.get_tx_status(tx_hash) == "confirmed"
+
+    def get_transaction_details(self, tx_hash: str) -> dict[str, Any]:
+        """Retrieve full transaction metadata and confirmation status.
+
+        Args:
+            tx_hash: Transaction hash to look up.
+
+        Returns:
+            Dictionary with tx_hash, status, block_number, gas_used,
+            confirmations, chain_id, timestamp.
+        """
+        try:
+            receipt = self._w3.eth.get_transaction_receipt(tx_hash)
+            latest_block = self._w3.eth.block_number
+            status: TxStatus = "confirmed" if receipt.status == 1 else "failed"
+            confirmations = max(1, latest_block - receipt.blockNumber + 1)
+            chain_id = self._w3.eth.chain_id
+            return {
+                "tx_hash": tx_hash,
+                "status": status,
+                "block_number": receipt.blockNumber,
+                "gas_used": receipt.gasUsed,
+                "confirmations": confirmations,
+                "chain_id": chain_id,
+                "timestamp": int(time.time()),
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("get_transaction_details failed for %s: %s", tx_hash, exc)
+            chain_id = None
+            try:
+                if self._w3.is_connected():
+                    chain_id = self._w3.eth.chain_id
+            except Exception:  # noqa: BLE001
+                pass
+
+            return {
+                "tx_hash": tx_hash,
+                "status": "pending",
+                "block_number": None,
+                "gas_used": None,
+                "confirmations": 0,
+                "chain_id": chain_id,
+                "timestamp": None,
+            }
