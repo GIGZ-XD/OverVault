@@ -74,24 +74,17 @@ def _load_abi(contract_name: str) -> list[dict]:
 # Config helper — raises an informative error on missing vars
 # ---------------------------------------------------------------------------
 
-def _require_env(name: str, fallback: str | None = None) -> str:
-    """Read a required environment variable or its fallback, raising ValueError if missing.
-
-    Args:
-        name: Primary environment variable name.
-        fallback: Optional fallback variable name (e.g. MST_*).
-
-    Returns:
-        The non-empty string value.
-
-    Raises:
-        ValueError: If neither variable is set or non-empty.
-    """
+def _require_env(name: str, *fallbacks: str) -> str:
+    """Read a required environment variable or its fallbacks, raising ValueError if missing."""
     value = os.environ.get(name, "").strip()
-    if not value and fallback:
-        value = os.environ.get(fallback, "").strip()
     if not value:
-        var_desc = f"'{name}'" if not fallback else f"'{name}' or '{fallback}'"
+        for fb in fallbacks:
+            value = os.environ.get(fb, "").strip()
+            if value:
+                break
+    if not value:
+        all_vars = [f"'{name}'"] + [f"'{fb}'" for fb in fallbacks]
+        var_desc = " or ".join(all_vars)
         raise ValueError(
             f"RealChainService: required environment variable {var_desc} is not set. "
             f"Add it to your .env file or export it before starting the backend."
@@ -127,19 +120,19 @@ class RealChainService:
         contract_address_permission: str | None = None,
     ) -> None:
         # ── Validate configuration ─────────────────────────────────────────
-        resolved_rpc_url = rpc_url or _require_env("EVM_RPC_URL", fallback="MST_RPC_URL")
-        resolved_private_key = private_key or _require_env("EVM_PRIVATE_KEY", fallback="MST_PRIVATE_KEY")
+        resolved_rpc_url = rpc_url or _require_env("MST_RPC_URL", "EVM_RPC_URL")
+        resolved_private_key = private_key or _require_env("MST_PRIVATE_KEY", "EVM_PRIVATE_KEY")
         self._addr_audit = Web3.to_checksum_address(
-            contract_address_audit or _require_env("CONTRACT_ADDRESS_AUDIT")
+            contract_address_audit or _require_env("CONTRACT_AUDIT_ADDRESS", "CONTRACT_ADDRESS_AUDIT")
         )
         self._addr_integrity = Web3.to_checksum_address(
-            contract_address_integrity or _require_env("CONTRACT_ADDRESS_INTEGRITY")
+            contract_address_integrity or _require_env("CONTRACT_INTEGRITY_ADDRESS", "CONTRACT_ADDRESS_INTEGRITY")
         )
         self._addr_ownership = Web3.to_checksum_address(
-            contract_address_ownership or _require_env("CONTRACT_ADDRESS_OWNERSHIP")
+            contract_address_ownership or _require_env("CONTRACT_OWNERSHIP_ADDRESS", "CONTRACT_ADDRESS_OWNERSHIP")
         )
         self._addr_permission = Web3.to_checksum_address(
-            contract_address_permission or _require_env("CONTRACT_ADDRESS_PERMISSION")
+            contract_address_permission or _require_env("CONTRACT_PERMISSION_ADDRESS", "CONTRACT_ADDRESS_PERMISSION")
         )
 
         # ── Connect to RPC ─────────────────────────────────────────────────
