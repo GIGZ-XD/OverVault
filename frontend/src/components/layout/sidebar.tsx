@@ -16,6 +16,7 @@ import {
   Cpu,
   X,
 } from "lucide-react";
+import { useDashboardSummary } from "@/lib/api/hooks/useDashboard";
 
 export interface SidebarProps {
   mobileOpen?: boolean;
@@ -24,6 +25,8 @@ export interface SidebarProps {
 
 export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarProps) {
   const pathname = usePathname();
+  const { data: summary } = useDashboardSummary();
+  const pendingCount = summary?.pending_approvals ?? 0;
 
   const navItems = [
     { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -95,9 +98,9 @@ export default function Sidebar({ mobileOpen = false, onCloseMobile }: SidebarPr
                   )}
                 />
                 <span>{item.label}</span>
-                {item.href === "/approvals" && (
+                {item.href === "/approvals" && pendingCount > 0 && (
                   <span className="ml-auto px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-warning/20 text-warning">
-                    1
+                    {pendingCount}
                   </span>
                 )}
               </Link>
