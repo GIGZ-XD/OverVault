@@ -15,22 +15,28 @@ Before starting, ensure your machine has:
 
 ## ⚙️ Step 1: Environment Configuration
 
-### Frontend Configuration
-The frontend uses `frontend/.env.local` to direct API traffic to the live FastAPI backend and enable the BridgeKey wallet adapter:
+### Quick One-Step Setup
+Copy `.env.example` into root `.env`, `backend/.env`, and `frontend/.env.local`:
 
 ```bash
-# Ensure frontend/.env.local exists with the following content:
+# In repository root:
+cp .env.example .env
+cp .env.example backend/.env
+cp frontend/.env.example frontend/.env.local
 ```
+
 File: `frontend/.env.local`
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:8000
 NEXT_PUBLIC_API_MODE=real
 NEXT_PUBLIC_WALLET_MODE=bridgekey
 NEXT_PUBLIC_MSTSCAN_BASE_URL=https://mstscan.io
+NEXT_PUBLIC_MST_CHAIN_ID=91562037
 ```
 
-### Backend Configuration (Optional / Defaults)
-The backend runs with sensible defaults out of the box (`AUTH_MODE=dev`, `CHAIN_MODE=fake`, SQLite database `overvault.db`). If you wish to customize port or secrets, copy `.env.example` to `backend/.env`.
+> **Note on Connecting with Any Wallet:**
+> OverVault automatically allows any verified BridgeKey wallet on the MST Testnet to connect, sign challenges, and enter the vault. Ensure your FastAPI backend is running on `http://localhost:8000`.
+
 
 ---
 
