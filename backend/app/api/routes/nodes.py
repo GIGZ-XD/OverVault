@@ -2,11 +2,15 @@
 from __future__ import annotations
 
 import secrets
+import shutil
+import socket
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+from app.config import get_settings
 from app.db import get_db
 from app.deps import get_current_user
 from app.models.user import User
@@ -20,81 +24,56 @@ from app.schemas.nodes import (
 
 router = APIRouter(prefix="/nodes", tags=["storage-nodes"])
 
-# In-memory storage state for storage nodes cluster
-_NODES_DB: list[dict[str, Any]] = [
-    {
-        "id": "node-us-east-01",
-        "name": "US-East Primary Vault",
-        "hostname": "vault-node-01.us-east.internal",
-        "ip_address": "192.168.10.45",
-        "region": "US-East (N. Virginia)",
-        "allocated_storage_gb": 1000,
-        "used_storage_gb": 342.8,
+# Storage for user-registered peer storage nodes
+_REGISTERED_NODES: list[dict[str, Any]] = []
+
+
+def _get_live_host_node() -> dict[str, Any]:
+    """Dynamically inspect host machine (laptop / server) and local storage."""
+    hostname = socket.gethostname() or "localhost"
+    settings = get_settings()
+    storage_path = Path(settings.storage_dir)
+
+    used_bytes = 0
+    chunks_count = 0
+    if storage_path.exists():
+        for f in storage_path.glob("**/*"):
+            if f.is_file():
+                used_bytes += f.stat().st_size
+                chunks_count += 1
+
+    used_gb = round(used_bytes / (1024**3), 3)
+
+    try:
+        disk = shutil.disk_usage(storage_path if storage_path.exists() else ".")
+        total_gb = int(disk.total / (1024**3))
+        allocated_gb = total_gb
+    except Exception:
+        allocated_gb = 500
+
+    return {
+        "id": "node-host-primary",
+        "name": f"Host Node ({hostname})",
+        "hostname": f"{hostname.lower()}.local",
+        "ip_address": "127.0.0.1",
+        "region": "Local Machine (Host Node)",
+        "allocated_storage_gb": allocated_gb,
+        "used_storage_gb": max(used_gb, 0.1),
         "status": "online",
-        "health_score": 99,
-        "latency_ms": 18,
-        "uptime_percentage": 99.98,
+        "health_score": 100,
+        "latency_ms": 1,
+        "uptime_percentage": 100.0,
         "is_bootstrap": True,
-        "agent_version": "v1.2.0",
-        "stored_chunks_count": 1420,
+        "agent_version": "v1.2.0-native",
+        "stored_chunks_count": max(chunks_count, 1),
         "last_heartbeat": datetime.now(timezone.utc),
-        "created_at": datetime.now(timezone.utc) - timedelta(days=45),
-    },
-    {
-        "id": "node-eu-west-02",
-        "name": "EU-West Frankfurt Relay",
-        "hostname": "node-de-02.fra.internal",
-        "ip_address": "10.240.0.12",
-        "region": "EU-Central (Frankfurt)",
-        "allocated_storage_gb": 750,
-        "used_storage_gb": 289.4,
-        "status": "online",
-        "health_score": 96,
-        "latency_ms": 42,
-        "uptime_percentage": 99.85,
-        "is_bootstrap": False,
-        "agent_version": "v1.2.0",
-        "stored_chunks_count": 1180,
-        "last_heartbeat": datetime.now(timezone.utc),
-        "created_at": datetime.now(timezone.utc) - timedelta(days=30),
-    },
-    {
-        "id": "node-ap-south-03",
-        "name": "AP-South Bangalore On-Prem",
-        "hostname": "corp-dc-srv03.blr.lan",
-        "ip_address": "172.16.8.99",
-        "region": "AP-South (Bangalore)",
-        "allocated_storage_gb": 1500,
-        "used_storage_gb": 512.1,
-        "status": "online",
-        "health_score": 98,
-        "latency_ms": 12,
-        "uptime_percentage": 99.95,
-        "is_bootstrap": False,
-        "agent_version": "v1.2.0",
-        "stored_chunks_count": 2150,
-        "last_heartbeat": datetime.now(timezone.utc),
-        "created_at": datetime.now(timezone.utc) - timedelta(days=20),
-    },
-    {
-        "id": "node-edge-backup-04",
-        "name": "Edge Disaster Recovery Node",
-        "hostname": "edge-storage-dr.local",
-        "ip_address": "192.168.1.104",
-        "region": "Local Edge Cluster",
-        "allocated_storage_gb": 500,
-        "used_storage_gb": 120.0,
-        "status": "syncing",
-        "health_score": 91,
-        "latency_ms": 8,
-        "uptime_percentage": 98.40,
-        "is_bootstrap": False,
-        "agent_version": "v1.2.0",
-        "stored_chunks_count": 640,
-        "last_heartbeat": datetime.now(timezone.utc),
-        "created_at": datetime.now(timezone.utc) - timedelta(days=5),
-    },
-]
+        "created_at": datetime.now(timezone.utc) - timedelta(days=1),
+    }
+
+
+def _get_all_nodes() -> list[dict[str, Any]]:
+    return [_get_live_host_node()] + _REGISTERED_NODES
+
 
 _REPLICATION_POLICY = {
     "replication_factor": 3,
@@ -107,7 +86,8 @@ _REPLICATION_POLICY = {
 
 @router.get("", response_model=list[StorageNodeOut], summary="List all connected storage nodes")
 def list_nodes(user: User = Depends(get_current_user)) -> list[StorageNodeOut]:
-    return [StorageNodeOut(**node) for node in _NODES_DB]
+    return [StorageNodeOut(**node) for node in _get_all_nodes()]
+
 
 
 @router.post("/token", response_model=NodeRegistrationToken, summary="Generate node registration token")
@@ -139,13 +119,13 @@ def register_node(body: StorageNodeCreate, user: User = Depends(get_current_user
         "last_heartbeat": datetime.now(timezone.utc),
         "created_at": datetime.now(timezone.utc),
     }
-    _NODES_DB.append(new_node)
+    _REGISTERED_NODES.append(new_node)
     return StorageNodeOut(**new_node)
 
 
 @router.put("/{node_id}/allocation", response_model=StorageNodeOut, summary="Update node allocated storage")
 def update_allocation(node_id: str, body: StorageNodeUpdateAllocation, user: User = Depends(get_current_user)) -> StorageNodeOut:
-    for node in _NODES_DB:
+    for node in _get_all_nodes():
         if node["id"] == node_id:
             node["allocated_storage_gb"] = body.allocated_storage_gb
             return StorageNodeOut(**node)
@@ -154,22 +134,23 @@ def update_allocation(node_id: str, body: StorageNodeUpdateAllocation, user: Use
 
 @router.delete("/{node_id}/decommission", status_code=status.HTTP_200_OK, summary="Safely remove node with data evacuation")
 def decommission_node(node_id: str, user: User = Depends(get_current_user)) -> dict[str, Any]:
-    global _NODES_DB
-    target = next((n for n in _NODES_DB if n["id"] == node_id), None)
+    global _REGISTERED_NODES
+    all_nodes = _get_all_nodes()
+    target = next((n for n in all_nodes if n["id"] == node_id), None)
     if not target:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Storage node not found")
     
     if target["is_bootstrap"]:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot decommission primary bootstrap node")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot decommission primary host bootstrap node")
     
     evacuated_chunks = target.get("stored_chunks_count", 0)
-    _NODES_DB = [n for n in _NODES_DB if n["id"] != node_id]
+    _REGISTERED_NODES = [n for n in _REGISTERED_NODES if n["id"] != node_id]
     
     return {
         "status": "decommissioned",
         "node_id": node_id,
         "evacuated_chunks": evacuated_chunks,
-        "target_replica_nodes": [n["id"] for n in _NODES_DB[:2]],
+        "target_replica_nodes": [n["id"] for n in _get_all_nodes()[:2]],
         "message": f"Successfully evacuated {evacuated_chunks} encrypted chunks and removed node from cluster.",
     }
 

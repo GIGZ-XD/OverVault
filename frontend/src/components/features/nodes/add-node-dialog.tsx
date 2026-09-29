@@ -25,8 +25,7 @@ export function AddNodeDialog({ isOpen, onClose, onNodeAdded }: AddNodeDialogPro
   // Manual Form State
   const [name, setName] = useState("");
   const [hostname, setHostname] = useState("");
-  const [ipAddress, setIpAddress] = useState("");
-  const [region, setRegion] = useState("US-East (N. Virginia)");
+  const [region, setRegion] = useState("Local Machine (Host Node)");
   const [allocatedGb, setAllocatedGb] = useState("500");
 
   const registerMutation = useRegisterNode();
@@ -248,13 +247,11 @@ export function AddNodeDialog({ isOpen, onClose, onNodeAdded }: AddNodeDialogPro
               <Select
                 label="Geographic Region"
                 options={[
+                  { label: "Local Machine (Host Node)", value: "Local Machine (Host Node)" },
                   { label: "Local Edge Cluster", value: "Local Edge Cluster" },
                   { label: "AP-South (Bangalore)", value: "AP-South (Bangalore)" },
                   { label: "US-East (N. Virginia)", value: "US-East (N. Virginia)" },
-                  { label: "US-West (Oregon)", value: "US-West (Oregon)" },
                   { label: "EU-Central (Frankfurt)", value: "EU-Central (Frankfurt)" },
-                  { label: "EU-West (London)", value: "EU-West (London)" },
-                  { label: "AP-East (Tokyo)", value: "AP-East (Tokyo)" },
                 ]}
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
