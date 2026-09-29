@@ -146,6 +146,17 @@ export function ApprovalInbox({
         keyExtractor={(a) => a.id}
         isLoading={isLoading}
         onRowClick={onSelectApproval}
+        emptyState={
+          <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+            <div className="w-10 h-10 rounded-full bg-parchment flex items-center justify-center text-ink-muted-48 border border-hairline">
+              <CheckSquare className="w-5 h-5" />
+            </div>
+            <p className="text-sm font-semibold text-ink">No approval workflows found</p>
+            <p className="text-xs text-ink-muted-48 max-w-sm">
+              When document updates or protection tier changes are initiated, they will appear here for multi-signature review.
+            </p>
+          </div>
+        }
       />
     </div>
   );

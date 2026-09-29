@@ -4,7 +4,7 @@ import { GrantsTable, PermissionGrant } from "@/components/features/access/grant
 import { GrantDialog } from "@/components/features/access/grant-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import { KeyRound, Plus, Users, Shield, RefreshCw, UserCheck } from "lucide-react";
+import { KeyRound, Plus, Users, Shield, RefreshCw, UserCheck, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api/client";
 import { useToast } from "@/components/ui/toast";
 
@@ -12,11 +12,13 @@ export default function AccessPage() {
   const [grants, setGrants] = useState<PermissionGrant[]>([]);
   const [users, setUsers] = useState<Array<{ id: string; name: string; role: string; wallet: string }>>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isGrantOpen, setIsGrantOpen] = useState(false);
   const { toast } = useToast();
 
   const loadData = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const [grantsData, usersData] = await Promise.all([
         api<PermissionGrant[]>("/files/f1/permissions").catch(() => []),
@@ -26,6 +28,7 @@ export default function AccessPage() {
       setUsers(usersData);
     } catch (err) {
       console.error(err);
+      setLoadError("Failed to fetch access control directory and grants from API.");
     } finally {
       setIsLoading(false);
     }
@@ -82,6 +85,18 @@ export default function AccessPage() {
           </Button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="p-4 rounded-[12px] bg-danger/10 border border-danger/20 flex items-center justify-between text-xs text-ink" role="alert">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 text-danger shrink-0" />
+            <span>{loadError}</span>
+          </div>
+          <Button size="sm" variant="secondary" onClick={loadData} className="text-xs h-7">
+            Retry Connection
+          </Button>
+        </div>
+      )}
 
       {/* Users Directory Quick Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

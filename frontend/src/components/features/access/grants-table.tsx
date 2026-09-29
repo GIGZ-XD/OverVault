@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PermissionPill } from "@/components/ui/permission-pill";
 import { formatDate } from "@/lib/utils";
-import { Trash2, UserCheck, Clock, Key } from "lucide-react";
+import { Trash2, UserCheck, Clock, Key, KeyRound } from "lucide-react";
 
 export interface PermissionGrant {
   id: string;
@@ -82,5 +82,23 @@ export function GrantsTable({ grants, isLoading, onRevoke }: GrantsTableProps) {
     },
   ];
 
-  return <DataTable columns={columns} data={grants} keyExtractor={(g) => g.id} isLoading={isLoading} />;
+  return (
+    <DataTable
+      columns={columns}
+      data={grants}
+      keyExtractor={(g) => g.id}
+      isLoading={isLoading}
+      emptyState={
+        <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+          <div className="w-10 h-10 rounded-full bg-parchment flex items-center justify-center text-ink-muted-48 border border-hairline">
+            <KeyRound className="w-5 h-5" />
+          </div>
+          <p className="text-sm font-semibold text-ink">No active permission grants</p>
+          <p className="text-xs text-ink-muted-48 max-w-sm">
+            Click &ldquo;Grant Access&rdquo; to issue cryptographically verifiable document permissions to team members.
+          </p>
+        </div>
+      }
+    />
+  );
 }

@@ -46,6 +46,30 @@ def record_audit_event(
 
 
 @router.get(
+    "",
+    response_model=list[AuditTrailResponse],
+    summary="List all audit trail events across the vault",
+)
+def list_all_audit(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[AuditTrailResponse]:
+    stmt = select(AuditOutbox).order_by(AuditOutbox.created_at.desc())
+    rows = list(db.scalars(stmt))
+    return [
+        AuditTrailResponse(
+            event_type=row.event_type,
+            reference_id=row.reference_id,
+            actor=row.actor,
+            status=row.status,
+            tx_hash=row.tx_hash,
+            created_at=row.created_at,
+        )
+        for row in rows
+    ]
+
+
+@router.get(
     "/{file_id}",
     response_model=list[AuditTrailResponse],
     summary="Get audit trail for a file",

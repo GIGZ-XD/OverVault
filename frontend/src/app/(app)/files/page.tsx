@@ -8,13 +8,15 @@ import { DocumentVersion } from "@/components/features/versions/version-timeline
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Plus, Search, RefreshCw } from "lucide-react";
+import { Plus, Search, RefreshCw, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api/client";
+import { config } from "@/lib/config";
 import { useToast } from "@/components/ui/toast";
 
 export default function FilesPage() {
   const [files, setFiles] = useState<VaultFile[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [protectionFilter, setProtectionFilter] = useState("all");
 
@@ -30,11 +32,13 @@ export default function FilesPage() {
 
   const loadFiles = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const data = await api<VaultFile[]>("/files");
       setFiles(data);
     } catch (err) {
       console.error(err);
+      setLoadError("Could not retrieve documents from vault API. Please ensure the backend is active.");
     } finally {
       setIsLoading(false);
     }
@@ -55,13 +59,24 @@ export default function FilesPage() {
     }
   };
 
-  const handleUpload = async (fileData: { name: string; size: number; protection: string }) => {
+  const handleUpload = async (fileData: { name: string; size: number; protection: string; file?: File }) => {
     try {
-      const created = await api<VaultFile>("/files", {
-        method: "POST",
-        body: JSON.stringify(fileData),
-      });
-      toast("success", "File Uploaded", `Registered ${created.name} in vault`);
+      let created: VaultFile;
+      if (fileData.file) {
+        const form = new FormData();
+        form.append("upload", fileData.file);
+        form.append("comment", "Uploaded via OverVault UI");
+        created = await api<VaultFile>("/files", {
+          method: "POST",
+          body: form,
+        });
+      } else {
+        created = await api<VaultFile>("/files", {
+          method: "POST",
+          body: JSON.stringify(fileData),
+        });
+      }
+      toast("success", "File Uploaded", `Registered ${created.name || fileData.name} in vault`);
       loadFiles();
     } catch (err) {
       toast("error", "Upload Failed", String(err));
@@ -70,8 +85,21 @@ export default function FilesPage() {
 
   const handleDownload = async (file: VaultFile) => {
     try {
-      const res = await api<{ content: string; hash: string }>(`/files/${file.id}/download`);
-      toast("success", `Downloaded ${file.name}`, `SHA-256 Digest: ${res.hash}`);
+      if (config.apiMode !== "mock") {
+        const res = await api.getBlob(`/files/${file.id}/download`);
+        const url = window.URL.createObjectURL(res.blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        toast("success", `Downloaded ${file.name}`, `SHA-256 Digest: ${res.sha256 || file.hash}`);
+      } else {
+        const res = await api<{ content: string; hash: string }>(`/files/${file.id}/download`);
+        toast("success", `Downloaded ${file.name}`, `SHA-256 Digest: ${res.hash}`);
+      }
     } catch (err) {
       toast("error", "Download Failed", String(err));
     }
@@ -163,6 +191,18 @@ export default function FilesPage() {
           Upload Document
         </Button>
       </div>
+
+      {loadError && (
+        <div className="p-4 rounded-[12px] bg-danger/10 border border-danger/20 flex items-center justify-between text-xs text-ink" role="alert">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 text-danger shrink-0" />
+            <span>{loadError}</span>
+          </div>
+          <Button size="sm" variant="secondary" onClick={loadFiles} className="text-xs h-7">
+            Retry Connection
+          </Button>
+        </div>
+      )}
 
       {/* Search & Filter Bar — Apple 14px card surface */}
       <div className="flex flex-col sm:flex-row items-center gap-3 bg-canvas p-3 rounded-[14px] border border-hairline">

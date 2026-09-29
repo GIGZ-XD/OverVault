@@ -16,6 +16,7 @@ import {
   Download,
   ExternalLink,
   Hash,
+  ScrollText,
 } from "lucide-react";
 
 export interface AuditEvent {
@@ -141,8 +142,17 @@ export function AuditTable({ events, isLoading, onSelectEvent }: AuditTableProps
       data={events}
       keyExtractor={(e) => e.id}
       isLoading={isLoading}
-      onRowClick={onSelectEvent}
-      emptyState="No audit events found. Actions on documents will appear here."
+      emptyState={
+        <div className="py-8 flex flex-col items-center justify-center text-center space-y-2">
+          <div className="w-10 h-10 rounded-full bg-parchment flex items-center justify-center text-ink-muted-48 border border-hairline">
+            <ScrollText className="w-5 h-5" />
+          </div>
+          <p className="text-sm font-semibold text-ink">No audit trail records found</p>
+          <p className="text-xs text-ink-muted-48 max-w-sm">
+            All document uploads, permission grants, and hash verifications are immutably logged here.
+          </p>
+        </div>
+      }
     />
   );
 }

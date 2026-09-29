@@ -4,13 +4,15 @@ import { AuditTable, AuditEvent } from "@/components/features/audit/audit-table"
 import { AuditFilters, AuditFilterValues } from "@/components/features/audit/audit-filters";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollText, ShieldCheck, Clock, AlertTriangle } from "lucide-react";
+import { ScrollText, ShieldCheck, Clock, AlertTriangle, AlertCircle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { api } from "@/lib/api/client";
 import { useToast } from "@/components/ui/toast";
 
 export default function AuditPage() {
   const [events, setEvents] = useState<AuditEvent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [filters, setFilters] = useState<AuditFilterValues>({
     search: "",
     eventType: "all",
@@ -20,11 +22,13 @@ export default function AuditPage() {
 
   const loadAudit = async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
       const data = await api<AuditEvent[]>("/audit");
       setEvents(data);
     } catch (err) {
       console.error(err);
+      setLoadError("Failed to fetch audit events from API.");
     } finally {
       setIsLoading(false);
     }
@@ -105,6 +109,18 @@ export default function AuditPage() {
           Tamper-proof chronological record of all document actions with on-chain verification links.
         </p>
       </div>
+
+      {loadError && (
+        <div className="p-4 rounded-[12px] bg-danger/10 border border-danger/20 flex items-center justify-between text-xs text-ink" role="alert">
+          <div className="flex items-center gap-2.5">
+            <AlertCircle className="w-4 h-4 text-danger shrink-0" />
+            <span>{loadError}</span>
+          </div>
+          <Button size="sm" variant="secondary" onClick={loadAudit} className="text-xs h-7">
+            Retry Connection
+          </Button>
+        </div>
+      )}
 
       {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
