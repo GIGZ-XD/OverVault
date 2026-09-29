@@ -13,4 +13,3 @@ with SessionLocal() as db:
     print(
         f"Worker complete: confirmed={confirmed}, failed={failed}"
     )
-

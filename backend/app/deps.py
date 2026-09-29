@@ -57,4 +57,3 @@ def get_chain_service():
         else:
             _chain_service_instance = FakeChainService()
     return _chain_service_instance
-

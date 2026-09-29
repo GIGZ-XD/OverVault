@@ -18,10 +18,10 @@ Two public functions:
 
 Event-type routing:
 
-  event_type containing "hash" or "integrity"   → ChainService.commit_hash()
-  event_type containing "ownership"              → ChainService.register_ownership()
-  event_type containing "permission"             → ChainService.record_permission()
-  all other event_types                          → ChainService.log_audit()
+  event_type containing "hash" or "integrity"   â†’ ChainService.commit_hash()
+  event_type containing "ownership"              â†’ ChainService.register_ownership()
+  event_type containing "permission"             â†’ ChainService.record_permission()
+  all other event_types                          â†’ ChainService.log_audit()
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
@@ -152,7 +152,7 @@ def _call_chain(
             expiry=payload.get("expiry"),
         )
 
-    # Default: generic audit event (upload, download, approve, delete, …)
+    # Default: generic audit event (upload, download, approve, delete, â€¦)
     return chain.log_audit(
         event_type=event.event_type,
         ref=payload.get("ref", event.reference_id),
@@ -197,7 +197,7 @@ def process_single_event(
         tx_result = _call_chain(chain, event, payload)
     except UnknownEventTypeError:
         logger.warning(
-            "Unknown event_type %r for outbox row %s — marking failed (no retry).",
+            "Unknown event_type %r for outbox row %s â€” marking failed (no retry).",
             event.event_type,
             event.id,
         )
@@ -210,7 +210,7 @@ def process_single_event(
         )
         return outbox_service.mark_failed(db, event)
 
-    # Submission succeeded — persist tx_hash
+    # Submission succeeded â€” persist tx_hash
     outbox_service.mark_submitted(db, event, tx_hash=tx_result.tx_hash)
     logger.info(
         "Outbox row %s submitted to chain: tx_hash=%s", event.id, tx_result.tx_hash
@@ -231,7 +231,7 @@ def process_single_event(
         return outbox_service.mark_confirmed(db, event)
 
     logger.warning(
-        "Transaction %s not confirmed for outbox row %s — marking failed.",
+        "Transaction %s not confirmed for outbox row %s â€” marking failed.",
         tx_result.tx_hash, event.id,
     )
     return outbox_service.mark_failed(db, event)
@@ -296,4 +296,3 @@ async def run_forever(interval_seconds: int = 5) -> None:
         except Exception as exc:
             logger.error("Outbox worker loop exception: %s", exc)
         await asyncio.sleep(interval_seconds)
-
