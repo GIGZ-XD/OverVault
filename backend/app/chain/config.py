@@ -106,11 +106,21 @@ class MSTChainConfig:
             poll_interval_seconds=poll_interval,
         )
 
+    @property
+    def is_mainnet(self) -> bool:
+        """Return True if this configuration points to MST Mainnet."""
+        return self.chain_id != 1337 and "testnet" not in self.rpc_url.lower()
+
+    def get_masked_private_key(self) -> str:
+        """Return masked private key string."""
+        return mask_secret(self.private_key)
+
     def to_safe_summary(self) -> dict[str, str | int | float]:
         """Return a dictionary safe for logging (with private keys masked)."""
         return {
             "rpc_url": self.rpc_url,
             "chain_id": self.chain_id,
+            "is_mainnet": self.is_mainnet,
             "private_key": mask_secret(self.private_key),
             "contract_audit": self.contract_audit,
             "contract_integrity": self.contract_integrity,

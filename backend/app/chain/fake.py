@@ -23,6 +23,13 @@ _TX_TYPE_PERMISSION = "permission"
 _TX_TYPE_HASH = "hash_commitment"
 _TX_TYPE_AUDIT = "audit_event"
 
+_CONTRACT_EVENT_MAP: dict[str, tuple[str, str]] = {
+    _TX_TYPE_OWNERSHIP: ("Ownership.sol", "OwnershipRegistered"),
+    _TX_TYPE_PERMISSION: ("Permission.sol", "PermissionSet"),
+    _TX_TYPE_HASH: ("Integrity.sol", "HashCommitted"),
+    _TX_TYPE_AUDIT: ("Audit.sol", "AuditLogged"),
+}
+
 
 class FakeChainService:
     """Fully in-memory ChainService implementation.
@@ -58,11 +65,14 @@ class FakeChainService:
         gas_used = 21000
         confirmations = 1
         chain_id = 1337
+        contract_name, event_name = _CONTRACT_EVENT_MAP.get(tx_type, (None, None))
 
         self._transactions[tx_hash] = {
             "tx_hash": tx_hash,
             "status": "confirmed",
             "type": tx_type,
+            "contract": contract_name,
+            "event": event_name,
             "data": data,
             "block_number": block_number,
             "gas_used": gas_used,
@@ -282,6 +292,8 @@ class FakeChainService:
             tx_data = self._transactions[tx_hash]
             return {
                 "tx_hash": tx_hash,
+                "contract": tx_data.get("contract", "Audit.sol"),
+                "event": tx_data.get("event", "AuditLogged"),
                 "status": tx_data.get("status", "confirmed"),
                 "block_number": tx_data.get("block_number", 1001),
                 "gas_used": tx_data.get("gas_used", 21000),
@@ -291,6 +303,8 @@ class FakeChainService:
             }
         return {
             "tx_hash": tx_hash,
+            "contract": None,
+            "event": None,
             "status": "failed",
             "block_number": None,
             "gas_used": None,

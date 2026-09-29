@@ -476,7 +476,7 @@ class RealChainService:
             tx_hash: Transaction hash to look up.
 
         Returns:
-            Dictionary with tx_hash, status, block_number, gas_used,
+            Dictionary with tx_hash, contract, event, status, block_number, gas_used,
             confirmations, chain_id, timestamp.
         """
         try:
@@ -485,8 +485,30 @@ class RealChainService:
             status: TxStatus = "confirmed" if receipt.status == 1 else "failed"
             confirmations = max(1, latest_block - receipt.blockNumber + 1)
             chain_id = self._w3.eth.chain_id
+
+            contract_name = None
+            event_name = None
+            if receipt.to:
+                to_addr = Web3.to_checksum_address(receipt.to)
+                if to_addr == self._addr_audit:
+                    contract_name = "Audit.sol"
+                    event_name = "AuditLogged"
+                elif to_addr == self._addr_integrity:
+                    contract_name = "Integrity.sol"
+                    event_name = "HashCommitted"
+                elif to_addr == self._addr_ownership:
+                    contract_name = "Ownership.sol"
+                    event_name = "OwnershipRegistered"
+                elif to_addr == self._addr_permission:
+                    contract_name = "Permission.sol"
+                    event_name = "PermissionSet"
+                else:
+                    contract_name = to_addr
+
             return {
                 "tx_hash": tx_hash,
+                "contract": contract_name,
+                "event": event_name,
                 "status": status,
                 "block_number": receipt.blockNumber,
                 "gas_used": receipt.gasUsed,
@@ -505,6 +527,8 @@ class RealChainService:
 
             return {
                 "tx_hash": tx_hash,
+                "contract": None,
+                "event": None,
                 "status": "pending",
                 "block_number": None,
                 "gas_used": None,

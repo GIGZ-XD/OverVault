@@ -14,6 +14,8 @@ class TransactionDetailsResponse(BaseModel):
     """Schema representing full transaction metadata and confirmation status."""
 
     tx_hash: str = Field(..., description="EVM transaction hash.")
+    contract: str | None = Field(default=None, description="Smart contract name or address involved in transaction.")
+    event: str | None = Field(default=None, description="Emitted blockchain event name.")
     status: str = Field(..., description="Confirmation status: 'confirmed', 'pending', or 'failed'.")
     block_number: int | None = Field(default=None, description="Block number where transaction was mined.")
     gas_used: int | None = Field(default=None, description="Gas units consumed by the transaction.")
