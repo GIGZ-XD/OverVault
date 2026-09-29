@@ -18,6 +18,12 @@ def list_users(db: Session = Depends(get_db), user: User = Depends(get_current_u
     return list(db.scalars(select(User).where(User.is_active.is_(True)).order_by(User.name)))
 
 
+@router.get("/directory", response_model=list[UserOut])
+def list_directory(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    """Active directory of colleagues available for permission granting and collaboration."""
+    return list(db.scalars(select(User).where(User.is_active.is_(True)).order_by(User.name)))
+
+
 @router.get("/{user_id}", response_model=UserOut)
 def get_user(user_id: str, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     if user_id != user.id:

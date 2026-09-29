@@ -16,6 +16,7 @@ delivered, spec-matching design for these two endpoints specifically.
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.auth import dev_auth
@@ -30,11 +31,12 @@ from app.auth.wallet_auth import (
 )
 from app.db import get_db
 from app.deps import get_current_user
-from app.models.user import User
+from app.models.user import Role, User
 from app.schemas.auth import (
     DevLoginRequest,
     NonceRequest,
     NonceResponse,
+    RegisterRequest,
     TokenResponse,
     UpdateProfileRequest,
     UserOut,
@@ -107,4 +109,38 @@ def update_profile(body: UpdateProfileRequest, db: Session = Depends(get_db), us
         db.commit()
         db.refresh(user)
     return user
+
+
+@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+def register(body: RegisterRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    """Register or claim a distinct identity for a teammate with their name and optional wallet."""
+    address = body.address.strip().lower() if body.address else None
+    if address:
+        existing = db.scalar(select(User).where(User.wallet_address == address))
+        if existing:
+            if body.name and body.name.strip():
+                existing.name = body.name.strip()
+                db.commit()
+                db.refresh(existing)
+            return _token(existing)
+
+    user_count = db.scalar(select(func.count(User.id))) or 0
+    candidate_id = f"u{user_count + 1}"
+    while db.get(User, candidate_id) is not None:
+        user_count += 1
+        candidate_id = f"u{user_count + 1}"
+
+    display_name = body.name.strip() if body.name and body.name.strip() else f"Member {candidate_id}"
+    user = User(
+        id=candidate_id,
+        email=f"{candidate_id}@vault.local",
+        name=display_name,
+        role=body.role or Role.employee,
+        wallet_address=address,
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return _token(user)
 

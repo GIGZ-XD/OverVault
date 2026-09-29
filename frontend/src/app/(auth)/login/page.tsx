@@ -158,39 +158,63 @@ export default function LoginPage() {
           }
         }
       } catch (walletErr) {
-        console.warn("Wallet login route note:", walletErr);
-        // Fallback to dev-login with matching seeded wallet or u1 to retrieve a live backend JWT
-        const fallbackUserId = connectedAddress.toLowerCase().includes("bbb2")
-          ? "u2"
-          : connectedAddress.toLowerCase().includes("ccc3")
-          ? "u3"
-          : connectedAddress.toLowerCase().includes("ddd4")
-          ? "u4"
-          : "u1";
-
+        console.warn("Wallet login unmapped address, registering unique teammate:", walletErr);
+        // Automatically register this new teammate as a unique user in the vault
         try {
-          const devRes = await api<{ access_token: string; user?: { name: string; role: string } }>("/auth/dev-login", {
-            method: "POST",
-            body: JSON.stringify({ user_id: fallbackUserId }),
-          });
-          jwtToken = devRes.access_token;
-          if (devRes.user) {
+          const regRes = await api<{ access_token: string; user?: { id: string; name: string; role: string; wallet_address?: string } }>(
+            "/auth/register",
+            {
+              method: "POST",
+              body: JSON.stringify({
+                name: chosenName,
+                address: connectedAddress,
+                role: "employee",
+              }),
+            }
+          );
+          if (regRes.access_token) {
+            jwtToken = regRes.access_token;
+            if (regRes.user) {
+              userProfile = {
+                name: regRes.user.name || chosenName,
+                role: regRes.user.role || "employee",
+                wallet: regRes.user.wallet_address || connectedAddress,
+              };
+            }
+          }
+        } catch (regErr) {
+          console.warn("Register route note:", regErr);
+          // If register route is unavailable, fallback to matching seeded wallet or dev-login
+          const fallbackUserId = connectedAddress.toLowerCase().includes("bbb2")
+            ? "u2"
+            : connectedAddress.toLowerCase().includes("ccc3")
+            ? "u3"
+            : connectedAddress.toLowerCase().includes("ddd4")
+            ? "u4"
+            : "u1";
+
+          try {
+            const devRes = await api<{ access_token: string; user?: { name: string; role: string } }>("/auth/dev-login", {
+              method: "POST",
+              body: JSON.stringify({ user_id: fallbackUserId }),
+            });
+            jwtToken = devRes.access_token;
+            if (devRes.user) {
+              userProfile = {
+                name: chosenName,
+                role: devRes.user.role || "employee",
+                wallet: connectedAddress,
+              };
+            }
+          } catch (devErr) {
+            console.warn("Dev login fallback note:", devErr);
+            jwtToken = "session_" + Math.random().toString(36).substring(2);
             userProfile = {
               name: chosenName,
-              role: devRes.user.role || "employee",
+              role: "employee",
               wallet: connectedAddress,
             };
           }
-        } catch (devErr) {
-          console.warn("Dev login fallback note:", devErr);
-          // If backend dev-login is disabled or offline, synthesize a local verified session
-          // so the user who proved their wallet signature can enter the vault smoothly
-          jwtToken = "session_" + Math.random().toString(36).substring(2);
-          userProfile = {
-            name: chosenName,
-            role: "employee",
-            wallet: connectedAddress,
-          };
         }
       }
 

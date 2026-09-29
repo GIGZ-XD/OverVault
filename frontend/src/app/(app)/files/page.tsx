@@ -27,6 +27,13 @@ export default function FilesPage() {
 
   const [grantFile, setGrantFile] = useState<VaultFile | null>(null);
   const [isGrantOpen, setIsGrantOpen] = useState(false);
+  const [users, setUsers] = useState<Array<{ id: string; name: string; role: string }>>([
+    { id: "u1", name: "Pavan", role: "employee" },
+    { id: "u2", name: "Ravi Kumar", role: "manager" },
+    { id: "u3", name: "Meera Iyer", role: "admin" },
+    { id: "u4", name: "Kiran Shah", role: "auditor" },
+    { id: "u5", name: "Priya Nair", role: "employee" },
+  ]);
 
   const { toast } = useToast();
 
@@ -34,8 +41,16 @@ export default function FilesPage() {
     setIsLoading(true);
     setLoadError(null);
     try {
-      const data = await api<VaultFile[]>("/files");
+      const [data, usersData] = await Promise.all([
+        api<VaultFile[]>("/files"),
+        api<Array<{ id: string; name: string; role: string }>>("/users/directory")
+          .catch(() => api<Array<{ id: string; name: string; role: string }>>("/users"))
+          .catch(() => []),
+      ]);
       setFiles(data);
+      if (usersData && usersData.length > 0) {
+        setUsers(usersData);
+      }
     } catch (err) {
       console.error(err);
       setLoadError("Could not retrieve documents from vault API. Please ensure the backend is active.");
@@ -280,13 +295,7 @@ export default function FilesPage() {
         onClose={() => setIsGrantOpen(false)}
         fileId={grantFile?.id}
         files={files}
-        users={[
-          { id: "u1", name: "Pavan", role: "employee" },
-          { id: "u2", name: "Ravi Kumar", role: "manager" },
-          { id: "u3", name: "Meera Iyer", role: "admin" },
-          { id: "u4", name: "Kiran Shah", role: "auditor" },
-          { id: "u5", name: "Priya Nair", role: "employee" },
-        ]}
+        users={users}
         onGrant={handleGrantAccess}
       />
     </div>

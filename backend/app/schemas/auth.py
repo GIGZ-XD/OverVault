@@ -61,3 +61,9 @@ class DevLoginRequest(BaseModel):
 class UpdateProfileRequest(BaseModel):
     name: str
 
+
+class RegisterRequest(BaseModel):
+    name: str
+    address: str | None = None
+    role: Role = Role.employee
+

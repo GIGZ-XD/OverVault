@@ -31,7 +31,9 @@ export default function AccessPage() {
     try {
       const [filesData, usersData] = await Promise.all([
         api<Array<{ id: string; name: string }>>("/files").catch(() => []),
-        api<Array<{ id: string; name: string; role: string; wallet?: string }>>("/users").catch(() => []),
+        api<Array<{ id: string; name: string; role: string; wallet?: string }>>("/users/directory")
+          .catch(() => api<Array<{ id: string; name: string; role: string; wallet?: string }>>("/users"))
+          .catch(() => []),
       ]);
       const directory = usersData && usersData.length > 0 ? usersData : KNOWN_TEAM_MEMBERS;
       setFiles(filesData);
