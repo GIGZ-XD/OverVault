@@ -6,10 +6,12 @@ reset when the process exits.
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import hashlib
 import time
+from typing import Any
 
 from app.chain.base import AuditRecord, TxResult, TxStatus
 
@@ -21,6 +23,13 @@ _TX_TYPE_OWNERSHIP = "ownership"
 _TX_TYPE_PERMISSION = "permission"
 _TX_TYPE_HASH = "hash_commitment"
 _TX_TYPE_AUDIT = "audit_event"
+
+_CONTRACT_EVENT_MAP: dict[str, tuple[str, str]] = {
+    _TX_TYPE_OWNERSHIP: ("Ownership.sol", "OwnershipRegistered"),
+    _TX_TYPE_PERMISSION: ("Permission.sol", "PermissionSet"),
+    _TX_TYPE_HASH: ("Integrity.sol", "HashCommitted"),
+    _TX_TYPE_AUDIT: ("Audit.sol", "AuditLogged"),
+}
 
 
 class FakeChainService:
@@ -51,15 +60,36 @@ class FakeChainService:
         return "0x" + hashlib.sha256(raw).hexdigest()[:40]
 
     def _store_tx(self, tx_hash: str, tx_type: str, data: dict) -> TxResult:
-        """Persist a fake transaction and return a TxResult."""
+        """Persist a fake transaction and return a TxResult with rich metadata."""
+        now_ts = int(time.time())
+        block_number = 1000 + len(self._transactions)
+        gas_used = 21000
+        confirmations = 1
+        chain_id = 1337
+        contract_name, event_name = _CONTRACT_EVENT_MAP.get(tx_type, (None, None))
+
         self._transactions[tx_hash] = {
             "tx_hash": tx_hash,
             "status": "confirmed",
             "type": tx_type,
+            "contract": contract_name,
+            "event": event_name,
             "data": data,
-            "timestamp": int(time.time()),
+            "block_number": block_number,
+            "gas_used": gas_used,
+            "confirmations": confirmations,
+            "chain_id": chain_id,
+            "timestamp": now_ts,
         }
-        return TxResult(tx_hash=tx_hash, status="confirmed")
+        return TxResult(
+            tx_hash=tx_hash,
+            status="confirmed",
+            block_number=block_number,
+            gas_used=gas_used,
+            confirmations=confirmations,
+            chain_id=chain_id,
+            timestamp=now_ts,
+        )
 
     # -----------------------------------------------------------------------
     # Ownership
@@ -84,7 +114,9 @@ class FakeChainService:
         Returns:
             TxResult with a confirmed fake transaction hash.
         """
-        tx_hash = self._make_tx_hash(_TX_TYPE_OWNERSHIP, file_id, owner_address, content_hash)
+        tx_hash = self._make_tx_hash(
+            _TX_TYPE_OWNERSHIP, file_id, owner_address, content_hash
+        )
         self._hashes[(file_id, 1)] = content_hash
         return self._store_tx(
             tx_hash,
@@ -114,11 +146,18 @@ class FakeChainService:
         Returns:
             TxResult with a confirmed fake transaction hash.
         """
-        tx_hash = self._make_tx_hash(_TX_TYPE_PERMISSION, file_id, grantee, action, expiry)
+        tx_hash = self._make_tx_hash(
+            _TX_TYPE_PERMISSION, file_id, grantee, action, expiry
+        )
         return self._store_tx(
             tx_hash,
             _TX_TYPE_PERMISSION,
-            {"file_id": file_id, "grantee": grantee, "action": action, "expiry": expiry},
+            {
+                "file_id": file_id,
+                "grantee": grantee,
+                "action": action,
+                "expiry": expiry,
+            },
         )
 
     # -----------------------------------------------------------------------
@@ -190,7 +229,9 @@ class FakeChainService:
         Returns:
             TxResult with a confirmed fake transaction hash.
         """
-        tx_hash = self._make_tx_hash(_TX_TYPE_AUDIT, event_type, ref, actor, int(time.time()))
+        tx_hash = self._make_tx_hash(
+            _TX_TYPE_AUDIT, event_type, ref, actor, int(time.time())
+        )
         result = self._store_tx(
             tx_hash,
             _TX_TYPE_AUDIT,
@@ -248,3 +289,38 @@ class FakeChainService:
             ``True`` if the transaction is known and confirmed, else ``False``.
         """
         return self.get_tx_status(tx_hash) == "confirmed"
+
+    def get_transaction_details(self, tx_hash: str) -> dict[str, Any]:
+        """Retrieve full transaction metadata and confirmation status.
+
+        Args:
+            tx_hash: The transaction hash to query.
+
+        Returns:
+            Dictionary containing tx_hash, status, block_number, gas_used,
+            confirmations, chain_id, timestamp.
+        """
+        if tx_hash in self._transactions:
+            tx_data = self._transactions[tx_hash]
+            return {
+                "tx_hash": tx_hash,
+                "contract": tx_data.get("contract", "Audit.sol"),
+                "event": tx_data.get("event", "AuditLogged"),
+                "status": tx_data.get("status", "confirmed"),
+                "block_number": tx_data.get("block_number", 1001),
+                "gas_used": tx_data.get("gas_used", 21000),
+                "confirmations": tx_data.get("confirmations", 1),
+                "chain_id": tx_data.get("chain_id", 1337),
+                "timestamp": tx_data.get("timestamp", int(time.time())),
+            }
+        return {
+            "tx_hash": tx_hash,
+            "contract": None,
+            "event": None,
+            "status": "failed",
+            "block_number": None,
+            "gas_used": None,
+            "confirmations": 0,
+            "chain_id": 1337,
+            "timestamp": None,
+        }

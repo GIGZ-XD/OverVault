@@ -19,11 +19,13 @@ ABI loading:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
+import time
 from functools import cached_property
 from pathlib import Path
 from typing import Any
@@ -69,29 +71,27 @@ def _load_abi(contract_name: str) -> list[dict]:
     return artifact["abi"]
 
 
-_DEPLOYED_TESTNET_JSON = _PROJECT_ROOT / "contracts" / "deployed.testnet.json"
+# ---------------------------------------------------------------------------
+# Config helper — raises an informative error on missing vars
+# ---------------------------------------------------------------------------
 
 
-def _resolve_contract_address(name: str, explicit: str | None = None) -> str:
-    """Resolve a contract address from explicit arg, env var, or deployed.testnet.json."""
-    if explicit:
-        return Web3.to_checksum_address(explicit)
-    env_val = os.environ.get(f"CONTRACT_ADDRESS_{name.upper()}", "").strip()
-    if env_val:
-        return Web3.to_checksum_address(env_val)
-    if _DEPLOYED_TESTNET_JSON.exists():
-        try:
-            with _DEPLOYED_TESTNET_JSON.open("r", encoding="utf-8") as fh:
-                data = json.load(fh)
-                addr = data.get("contracts", {}).get(name.lower(), {}).get("address", "")
-                if addr:
-                    return Web3.to_checksum_address(addr)
-        except Exception:
-            pass
-    raise ValueError(
-        f"RealChainService: required contract address for '{name}' not found. "
-        f"Set CONTRACT_ADDRESS_{name.upper()} in your environment or populate {_DEPLOYED_TESTNET_JSON}."
-    )
+def _require_env(name: str, *fallbacks: str) -> str:
+    """Read a required environment variable or its fallbacks, raising ValueError if missing."""
+    value = os.environ.get(name, "").strip()
+    if not value:
+        for fb in fallbacks:
+            value = os.environ.get(fb, "").strip()
+            if value:
+                break
+    if not value:
+        all_vars = [f"'{name}'"] + [f"'{fb}'" for fb in fallbacks]
+        var_desc = " or ".join(all_vars)
+        raise ValueError(
+            f"RealChainService: required environment variable {var_desc} is not set. "
+            f"Add it to your .env file or export it before starting the backend."
+        )
+    return value
 
 
 # ---------------------------------------------------------------------------
@@ -100,16 +100,16 @@ def _resolve_contract_address(name: str, explicit: str | None = None) -> str:
 
 
 class RealChainService:
-    """Web3.py-backed ChainService connecting to an EVM RPC node (MST Testnet or local).
+    """Web3.py-backed ChainService connecting to a local Hardhat (or any EVM) node.
 
     Implements the :class:`~app.chain.base.ChainService` Protocol.
 
-    Instantiation validates the RPC connection and loads contract addresses.
-    When a private key is provided, transactions can be signed and broadcast.
-    When omitted, the service functions in read-only verification mode.
+    Instantiation validates all required environment variables and checks
+    the RPC connection.  A ``ValueError`` is raised for missing config; a
+    ``ConnectionError`` is raised if the node is unreachable.
 
     Thread safety: each instance caches the Web3 connection and signed-
-    transaction account. Use one instance per process (not per request).
+    transaction account.  Use one instance per process (not per request).
     """
 
     def __init__(
@@ -122,26 +122,32 @@ class RealChainService:
         contract_address_permission: str | None = None,
     ) -> None:
         # ── Validate configuration ─────────────────────────────────────────
-        resolved_rpc_url = (
-            rpc_url
-            or os.environ.get("MST_RPC_URL", "").strip()
-            or os.environ.get("EVM_RPC_URL", "").strip()
-            or "https://testnetrpc.mstblockchain.com"
+        resolved_rpc_url = rpc_url or _require_env("MST_RPC_URL", "EVM_RPC_URL")
+        resolved_private_key = private_key or _require_env(
+            "MST_PRIVATE_KEY", "EVM_PRIVATE_KEY"
         )
-        resolved_private_key = (
-            private_key
-            or os.environ.get("MST_BACKEND_SIGNER_KEY", "").strip()
-            or os.environ.get("MST_PRIVATE_KEY", "").strip()
-            or os.environ.get("EVM_PRIVATE_KEY", "").strip()
+        self._addr_audit = Web3.to_checksum_address(
+            contract_address_audit
+            or _require_env("CONTRACT_AUDIT_ADDRESS", "CONTRACT_ADDRESS_AUDIT")
         )
-        self._addr_audit = _resolve_contract_address("audit", contract_address_audit)
-        self._addr_integrity = _resolve_contract_address("integrity", contract_address_integrity)
-        self._addr_ownership = _resolve_contract_address("ownership", contract_address_ownership)
-        self._addr_permission = _resolve_contract_address("permission", contract_address_permission)
+        self._addr_integrity = Web3.to_checksum_address(
+            contract_address_integrity
+            or _require_env("CONTRACT_INTEGRITY_ADDRESS", "CONTRACT_ADDRESS_INTEGRITY")
+        )
+        self._addr_ownership = Web3.to_checksum_address(
+            contract_address_ownership
+            or _require_env("CONTRACT_OWNERSHIP_ADDRESS", "CONTRACT_ADDRESS_OWNERSHIP")
+        )
+        self._addr_permission = Web3.to_checksum_address(
+            contract_address_permission
+            or _require_env(
+                "CONTRACT_PERMISSION_ADDRESS", "CONTRACT_ADDRESS_PERMISSION"
+            )
+        )
 
         # ── Connect to RPC ─────────────────────────────────────────────────
         self._w3 = Web3(Web3.HTTPProvider(resolved_rpc_url))
-        # Inject PoA middleware (needed for Hardhat/Clique/MST chains)
+        # Inject PoA middleware (needed for Hardhat/Clique chains)
         self._w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
         if not self._w3.is_connected():
@@ -155,16 +161,9 @@ class RealChainService:
             resolved_rpc_url,
         )
 
-        # ── Signing account (optional for read-only query mode) ─────────────
-        self._account = (
-            self._w3.eth.account.from_key(resolved_private_key)
-            if resolved_private_key
-            else None
-        )
-        if self._account:
-            logger.info("RealChainService signer: %s", self._account.address)
-        else:
-            logger.info("RealChainService running in read-only query mode (no signer key configured)")
+        # ── Signing account ────────────────────────────────────────────────
+        self._account = self._w3.eth.account.from_key(resolved_private_key)
+        logger.info("RealChainService signer: %s", self._account.address)
 
         # ── Load ABIs ──────────────────────────────────────────────────────
         self._abi_audit = _load_abi("Audit")
@@ -182,15 +181,21 @@ class RealChainService:
 
     @cached_property
     def _integrity(self) -> Any:
-        return self._w3.eth.contract(address=self._addr_integrity, abi=self._abi_integrity)
+        return self._w3.eth.contract(
+            address=self._addr_integrity, abi=self._abi_integrity
+        )
 
     @cached_property
     def _ownership(self) -> Any:
-        return self._w3.eth.contract(address=self._addr_ownership, abi=self._abi_ownership)
+        return self._w3.eth.contract(
+            address=self._addr_ownership, abi=self._abi_ownership
+        )
 
     @cached_property
     def _permission(self) -> Any:
-        return self._w3.eth.contract(address=self._addr_permission, abi=self._abi_permission)
+        return self._w3.eth.contract(
+            address=self._addr_permission, abi=self._abi_permission
+        )
 
     # -----------------------------------------------------------------------
     # Internal: send a signed transaction and wait for receipt
@@ -200,49 +205,64 @@ class RealChainService:
         """Build, sign, broadcast a contract call and return a TxResult.
 
         Args:
-            fn: A Web3 contract function ready to be called
-                (e.g. ``self._audit.functions.logAudit(...)``).
+            fn: A Web3 contract function ready to be called.
 
         Returns:
-            :class:`~app.chain.base.TxResult` with the real transaction hash
-            and a confirmed/failed status.
+            TxResult containing transaction hash and status.
 
         Raises:
-            ContractLogicError: Propagated if the transaction is reverted
-                by the contract.
-            Exception: Re-raised with context for any other unexpected error.
+            ContractLogicError: If the contract reverts.
+            Exception: For unexpected transaction failures.
         """
-        if not self._account:
-            raise ValueError(
-                "RealChainService: transaction signing requires a private key. "
-                "Set MST_BACKEND_SIGNER_KEY or MST_PRIVATE_KEY in your environment."
-            )
         try:
             nonce = self._w3.eth.get_transaction_count(self._account.address)
+            gas_estimate = fn.estimate_gas({"from": self._account.address})
+
             tx = fn.build_transaction(
                 {
                     "from": self._account.address,
                     "nonce": nonce,
-                    "gas": 500_000,
+                    "gas": gas_estimate + 50_000,
                     "gasPrice": self._w3.eth.gas_price,
                 }
             )
+
             signed = self._account.sign_transaction(tx)
             tx_hash_bytes = self._w3.eth.send_raw_transaction(signed.raw_transaction)
             tx_hash = tx_hash_bytes.hex()
             if not tx_hash.startswith("0x"):
                 tx_hash = "0x" + tx_hash
 
-            receipt = self._w3.eth.wait_for_transaction_receipt(tx_hash_bytes, timeout=120)
+            receipt = self._w3.eth.wait_for_transaction_receipt(
+                tx_hash_bytes, timeout=120
+            )
             status: TxStatus = "confirmed" if receipt.status == 1 else "failed"
-            logger.debug("tx %s — status=%s block=%s", tx_hash, status, receipt.blockNumber)
-            return TxResult(tx_hash=tx_hash, status=status)
+            chain_id = self._w3.eth.chain_id
+
+            logger.info(
+                "Transaction completed tx=%s status=%s block=%s gas=%s",
+                tx_hash,
+                status,
+                receipt.blockNumber,
+                receipt.gasUsed,
+            )
+
+            return TxResult(
+                tx_hash=tx_hash,
+                status=status,
+                block_number=receipt.blockNumber,
+                gas_used=receipt.gasUsed,
+                confirmations=1,
+                chain_id=chain_id,
+                timestamp=int(time.time()),
+            )
 
         except ContractLogicError as exc:
             logger.warning("Contract reverted: %s", exc)
             raise
-        except Exception as exc:
-            logger.error("Unexpected error sending transaction: %s", exc, exc_info=True)
+
+        except Exception:
+            logger.exception("Unexpected error sending transaction")
             raise
 
     # -----------------------------------------------------------------------
@@ -277,7 +297,7 @@ class RealChainService:
         # Anchor initial hash as version 1 (mirrors FakeChainService behaviour)
         try:
             self.commit_hash(file_id, 1, content_hash)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning(
                 "register_ownership: could not anchor initial hash for %s: %s",
                 file_id,
@@ -356,9 +376,11 @@ class RealChainService:
         """
         try:
             return bool(
-                self._integrity.functions.verifyHash(file_id, version, content_hash).call()
+                self._integrity.functions.verifyHash(
+                    file_id, version, content_hash
+                ).call()
             )
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             logger.warning("verify_hash error for %s v%s: %s", file_id, version, exc)
             return False
 
@@ -400,8 +422,10 @@ class RealChainService:
         """
         try:
             indices: list[int] = self._audit.functions.getEntriesForRef(file_id).call()
-        except Exception as exc:
-            logger.warning("get_audit_trail: getEntriesForRef failed for %s: %s", file_id, exc)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "get_audit_trail: getEntriesForRef failed for %s: %s", file_id, exc
+            )
             return []
 
         records: list[AuditRecord] = []
@@ -423,7 +447,7 @@ class RealChainService:
                         timestamp=int(timestamp),
                     )
                 )
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 logger.warning("get_audit_trail: getEntry(%s) failed: %s", idx, exc)
                 continue
 
@@ -447,7 +471,7 @@ class RealChainService:
         """
         try:
             receipt = self._w3.eth.get_transaction_receipt(tx_hash)
-        except Exception:
+        except Exception:  # noqa: BLE001
             receipt = None
 
         if receipt is None:
@@ -466,3 +490,74 @@ class RealChainService:
             ``True`` if the transaction is confirmed, ``False`` otherwise.
         """
         return self.get_tx_status(tx_hash) == "confirmed"
+
+    def get_transaction_details(self, tx_hash: str) -> dict[str, Any]:
+        """Retrieve full transaction metadata and confirmation status.
+
+        Args:
+            tx_hash: Transaction hash to look up.
+
+        Returns:
+            Dictionary with tx_hash, contract, event, status, block_number, gas_used,
+            confirmations, chain_id, timestamp.
+        """
+        try:
+            receipt = self._w3.eth.get_transaction_receipt(tx_hash)
+            latest_block = self._w3.eth.block_number
+            status: TxStatus = "confirmed" if receipt.status == 1 else "failed"
+            confirmations = max(1, latest_block - receipt.blockNumber + 1)
+            chain_id = self._w3.eth.chain_id
+
+            contract_name = None
+            event_name = None
+            if receipt.to:
+                to_addr = Web3.to_checksum_address(receipt.to)
+                if to_addr == self._addr_audit:
+                    contract_name = "Audit.sol"
+                    event_name = "AuditLogged"
+                elif to_addr == self._addr_integrity:
+                    contract_name = "Integrity.sol"
+                    event_name = "HashCommitted"
+                elif to_addr == self._addr_ownership:
+                    contract_name = "Ownership.sol"
+                    event_name = "OwnershipRegistered"
+                elif to_addr == self._addr_permission:
+                    contract_name = "Permission.sol"
+                    event_name = "PermissionSet"
+                else:
+                    contract_name = to_addr
+
+            return {
+                "tx_hash": tx_hash,
+                "contract": contract_name,
+                "event": event_name,
+                "status": status,
+                "block_number": receipt.blockNumber,
+                "gas_used": receipt.gasUsed,
+                "confirmations": confirmations,
+                "chain_id": chain_id,
+                "timestamp": int(time.time()),
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("get_transaction_details failed for %s: %s", tx_hash, exc)
+            chain_id = None
+            try:
+                if self._w3.is_connected():
+                    chain_id = self._w3.eth.chain_id
+            except Exception:
+                logger.debug(
+                    "Unable to retrieve blockchain metadata",
+                    exc_info=True,
+                )
+
+            return {
+                "tx_hash": tx_hash,
+                "contract": None,
+                "event": None,
+                "status": "pending",
+                "block_number": None,
+                "gas_used": None,
+                "confirmations": 0,
+                "chain_id": chain_id,
+                "timestamp": None,
+            }

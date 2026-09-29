@@ -1,0 +1,16 @@
+.exit
+await provider.ethers.provider.getBalance(signer[0].address)
+signer[0].address
+const signer = await provider.ethers.getSigners()
+await provider.ethers.provider.getNetwork()
+const provider = await network.connect()
+const { network } = await import("hardhat")
+.exit
+hre.ethers.provider.getNetwork()
+const hre = await import("hardhat")
+await ethers.provider.getNetwork()
+const { ethers } = require("hardhat")
+.exit
+await ethers.provider.getNetwork()
+const { ethers } = await import("hardhat")
+await ethers.provider.getNetwork()

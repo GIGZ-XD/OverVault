@@ -14,6 +14,7 @@ Function responsibilities:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import json
@@ -48,6 +49,33 @@ def _encode_payload(payload: dict[str, Any] | None) -> str | None:
     if payload is None:
         return None
     return json.dumps(payload, default=str)
+
+
+def get_retry_delay(attempt: int) -> float:
+    """Calculate exponential retry delay in seconds.
+
+    Schedule:
+    - Attempt 1: 5 seconds
+    - Attempt 2: 30 seconds
+    - Attempt 3: 300 seconds (5 minutes)
+    - Attempt 4: 1800 seconds (30 minutes)
+    - Attempt 5+: 3600 seconds (1 hour)
+
+    Args:
+        attempt: The 1-based attempt count (or retry_count).
+
+    Returns:
+        Delay in seconds before the next retry.
+    """
+    if attempt <= 1:
+        return 5.0
+    if attempt == 2:
+        return 30.0
+    if attempt == 3:
+        return 300.0
+    if attempt == 4:
+        return 1800.0
+    return 3600.0
 
 
 # ---------------------------------------------------------------------------
@@ -85,7 +113,9 @@ def create_event(
         payload=_encode_payload(payload),
         status="pending",
         retry_count=0,
+        last_error=None,
         tx_hash=None,
+        processed_at=None,
         created_at=_now(),
         updated_at=_now(),
     )
@@ -101,7 +131,7 @@ def get_pending_events(
 ) -> list[AuditOutbox]:
     """Return outbox rows that are waiting for blockchain submission.
 
-    Only rows with ``status="pending"`` and ``retry_count < MAX_RETRIES``
+    Only rows with ``status`` in ``("pending", "retry")`` and ``retry_count < MAX_RETRIES``
     are returned, ordered oldest-first so events are processed in order.
 
     Args:
@@ -114,13 +144,32 @@ def get_pending_events(
     stmt = (
         select(AuditOutbox)
         .where(
-            AuditOutbox.status == "pending",
+            AuditOutbox.status.in_(["pending", "retry"]),
             AuditOutbox.retry_count < MAX_RETRIES,
         )
         .order_by(AuditOutbox.created_at)
         .limit(limit)
     )
     return list(db.scalars(stmt))
+
+
+def mark_processing(
+    db: Session,
+    event: AuditOutbox,
+) -> AuditOutbox:
+    """Transition an event to ``processing`` while worker is submitting.
+
+    Args:
+        db:    Active SQLAlchemy session.
+        event: The outbox row being processed.
+
+    Returns:
+        The updated ``AuditOutbox`` instance.
+    """
+    event.status = "processing"
+    event.updated_at = _now()
+    db.flush()
+    return event
 
 
 def mark_submitted(
@@ -166,6 +215,61 @@ def mark_confirmed(
         The updated ``AuditOutbox`` instance.
     """
     event.status = "confirmed"
+    event.processed_at = _now()
+    event.updated_at = _now()
+    db.flush()
+    return event
+
+
+def mark_retry(
+    db: Session,
+    event: AuditOutbox,
+    *,
+    error: str | None = None,
+) -> AuditOutbox:
+    """Record a retryable failure and update state to ``retry`` or ``dead_letter``.
+
+    Args:
+        db:    Active SQLAlchemy session.
+        event: The outbox row being updated.
+        error: Optional error message describing the failure.
+
+    Returns:
+        The updated ``AuditOutbox`` instance.
+    """
+    event.retry_count += 1
+    if error:
+        event.last_error = error
+    event.updated_at = _now()
+    if event.retry_count >= MAX_RETRIES:
+        event.status = "dead_letter"
+        event.processed_at = _now()
+    else:
+        event.status = "retry"
+    db.flush()
+    return event
+
+
+def mark_dead_letter(
+    db: Session,
+    event: AuditOutbox,
+    *,
+    error: str | None = None,
+) -> AuditOutbox:
+    """Transition an unrecoverable event directly to ``dead_letter``.
+
+    Args:
+        db:    Active SQLAlchemy session.
+        event: The outbox row being updated.
+        error: Optional error description.
+
+    Returns:
+        The updated ``AuditOutbox`` instance.
+    """
+    event.status = "dead_letter"
+    if error:
+        event.last_error = error
+    event.processed_at = _now()
     event.updated_at = _now()
     db.flush()
     return event
@@ -174,6 +278,8 @@ def mark_confirmed(
 def mark_failed(
     db: Session,
     event: AuditOutbox,
+    *,
+    error: str | None = None,
 ) -> AuditOutbox:
     """Record a failed submission attempt and increment the retry counter.
 
@@ -184,14 +290,19 @@ def mark_failed(
     Args:
         db:    Active SQLAlchemy session.
         event: The outbox row being updated.
+        error: Optional error description to persist.
 
     Returns:
         The updated ``AuditOutbox`` instance.
     """
     event.retry_count += 1
+    if error:
+        event.last_error = error
     event.updated_at = _now()
     if event.retry_count >= MAX_RETRIES:
         event.status = "failed"
-    # else: stays "pending" — will be picked up again by get_pending_events()
+        event.processed_at = _now()
+    else:
+        event.status = "pending"
     db.flush()
     return event
