@@ -8,6 +8,7 @@ import { KeyRound, Plus, Users, Shield, RefreshCw, UserCheck, AlertCircle, Shiel
 import { api } from "@/lib/api/client";
 import { useToast } from "@/components/ui/toast";
 import { useMe } from "@/lib/api/hooks/useAuth";
+import { shortHash } from "@/lib/utils";
 import Link from "next/link";
 
 export default function AccessPage() {
@@ -85,7 +86,7 @@ export default function AccessPage() {
 
   const handleGrant = async (grantData: { fileId: string; grantee: string; permission: string; expires_at: string }) => {
     try {
-      await api(`/files/${grantData.fileId}/permissions`, {
+      const res = await api<PermissionGrant>(`/files/${grantData.fileId}/permissions`, {
         method: "POST",
         body: JSON.stringify({
           grantee: grantData.grantee,
@@ -93,7 +94,8 @@ export default function AccessPage() {
           expires_at: grantData.expires_at,
         }),
       });
-      toast("success", "Permission Issued", `Granted ${grantData.permission} to ${grantData.grantee}`);
+      const txInfo = res?.tx_hash ? ` • Tx: ${shortHash(res.tx_hash)}` : " • Anchored on MST Blockchain";
+      toast("success", "Permission Granted on Blockchain", `Issued ${grantData.permission} to ${grantData.grantee}${txInfo}`);
       loadData();
     } catch (err) {
       toast("error", "Grant Failed", String(err));

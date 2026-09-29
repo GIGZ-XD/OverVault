@@ -1,10 +1,12 @@
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import get_current_user
+from app.models.audit_outbox import AuditOutbox
 from app.models.base import as_utc, utcnow
 from app.models.permission import Permission
 from app.models.user import User
@@ -14,7 +16,7 @@ from app.services import permissions, versioning
 router = APIRouter(tags=["permissions"])
 
 
-def permission_out(p: Permission) -> PermissionOut:
+def permission_out(p: Permission, db: Session | None = None) -> PermissionOut:
     exp = as_utc(p.expires_at)
     if p.revoked_at is not None:
         status = "revoked"
@@ -22,6 +24,13 @@ def permission_out(p: Permission) -> PermissionOut:
         status = "expired"
     else:
         status = "active"
+    tx_hash = None
+    if db is not None:
+        tx_hash = db.scalar(
+            select(AuditOutbox.tx_hash)
+            .where(AuditOutbox.reference_id == p.file_id, AuditOutbox.tx_hash.isnot(None))
+            .order_by(AuditOutbox.created_at.desc())
+        )
     return PermissionOut(
         id=p.id,
         file_id=p.file_id,
@@ -33,6 +42,7 @@ def permission_out(p: Permission) -> PermissionOut:
         revoked_at=p.revoked_at,
         revoked_reason=p.revoked_reason,
         created_at=p.created_at,
+        tx_hash=tx_hash,
     )
 
 
@@ -41,7 +51,7 @@ def list_permissions(
     file_id: str, include_inactive: bool = False, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ):
     f = versioning.get_file(db, file_id)
-    return [permission_out(p) for p in permissions.list_for_file(db, f, user, include_inactive=include_inactive)]
+    return [permission_out(p, db) for p in permissions.list_for_file(db, f, user, include_inactive=include_inactive)]
 
 
 @router.post("/files/{file_id}/permissions", response_model=PermissionOut, status_code=201)
@@ -52,7 +62,7 @@ def grant_permission(
     p = permissions.grant(
         db, f, user, grantee_id=body.grantee, level=body.permission, expires_at=body.expires_at, signature=body.signature
     )
-    return permission_out(p)
+    return permission_out(p, db)
 
 
 @router.delete("/permissions/{permission_id}", status_code=204)

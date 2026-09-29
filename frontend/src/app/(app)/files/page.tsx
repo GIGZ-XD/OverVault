@@ -12,6 +12,7 @@ import { Plus, Search, RefreshCw, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api/client";
 import { config } from "@/lib/config";
 import { useToast } from "@/components/ui/toast";
+import { shortHash } from "@/lib/utils";
 
 export default function FilesPage() {
   const [files, setFiles] = useState<VaultFile[]>([]);
@@ -85,7 +86,8 @@ export default function FilesPage() {
           body: JSON.stringify(fileData),
         });
       }
-      toast("success", "File Uploaded", `Registered ${created.name || fileData.name} in vault`);
+      const txInfo = created?.ownership_tx ? ` • Tx: ${shortHash(created.ownership_tx)}` : " • Anchored on MST Blockchain";
+      toast("success", "File Uploaded & Anchored", `Registered ${created.name || fileData.name}${txInfo}`);
       loadFiles();
     } catch (err) {
       toast("error", "Upload Failed", String(err));

@@ -11,6 +11,7 @@ import {
   Trash2,
   Share2,
   CheckSquare,
+  ExternalLink,
 } from "lucide-react";
 
 export interface VaultFile {
@@ -101,6 +102,28 @@ export function FileTable({
         if (v === "tampered") return <Badge variant="tampered">Tampered</Badge>;
         return <Badge variant="pending">Pending</Badge>;
       },
+    },
+    {
+      header: "MST Blockchain Tx",
+      className: "whitespace-nowrap",
+      cell: (file) =>
+        file.ownership_tx ? (
+          <a
+            href={`https://mstscan.io/tx/${file.ownership_tx}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            title="Inspect Transaction on MSTScan"
+            className="inline-flex items-center gap-1.5 font-mono text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-[6px] border border-primary/20 hover:bg-primary/20 transition-colors"
+          >
+            {shortHash(file.ownership_tx)}
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        ) : (
+          <span className="text-xs text-ink-muted-48 font-mono bg-parchment px-2 py-0.5 rounded-[6px] border border-hairline">
+            Anchored
+          </span>
+        ),
     },
     {
       header: "Actions",

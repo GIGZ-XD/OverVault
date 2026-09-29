@@ -38,11 +38,18 @@ class AuditEventResponse(BaseModel):
 
 
 class AuditTrailResponse(BaseModel):
+    id: str | None = None
     event_type: str
     reference_id: str
+    file_id: str | None = None
+    file_name: str | None = None
     actor: str
+    actor_name: str | None = None
     status: str
+    verification: str = "verified"
     tx_hash: str | None = Field(default=None)
     created_at: datetime
+    timestamp: float | None = None
+    detail: str | None = None
 
     model_config = {"from_attributes": True}

@@ -4,8 +4,8 @@ import { DataTable, Column } from "@/components/ui/data-table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { PermissionPill } from "@/components/ui/permission-pill";
-import { formatDate } from "@/lib/utils";
-import { Trash2, UserCheck, Clock, Key, KeyRound } from "lucide-react";
+import { formatDate, shortHash } from "@/lib/utils";
+import { Trash2, UserCheck, Clock, Key, KeyRound, ExternalLink } from "lucide-react";
 
 export interface PermissionGrant {
   id: string;
@@ -18,6 +18,7 @@ export interface PermissionGrant {
   status: "active" | "expired" | "revoked" | string;
   granted_by?: string;
   created_at?: string;
+  tx_hash?: string | null;
 }
 
 export interface GrantsTableProps {
@@ -75,6 +76,27 @@ export function GrantsTable({ grants, isLoading, onRevoke }: GrantsTableProps) {
         if (s === "expired") return <Badge variant="expired">Expired</Badge>;
         return <Badge variant="revoked">Revoked</Badge>;
       },
+    },
+    {
+      header: "MST Transaction",
+      className: "whitespace-nowrap",
+      cell: (item) =>
+        item.tx_hash ? (
+          <a
+            href={`https://mstscan.io/tx/${item.tx_hash}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Inspect Permission Grant on MSTScan"
+            className="inline-flex items-center gap-1.5 font-mono text-xs text-primary bg-primary/10 px-2 py-0.5 rounded-[6px] border border-primary/20 hover:bg-primary/20 transition-colors"
+          >
+            {shortHash(item.tx_hash)}
+            <ExternalLink className="w-3 h-3" />
+          </a>
+        ) : (
+          <span className="inline-flex items-center gap-1 font-mono text-xs text-ink-muted-48 bg-parchment px-2 py-0.5 rounded-[6px] border border-hairline">
+            Anchored
+          </span>
+        ),
     },
     {
       header: "Actions",

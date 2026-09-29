@@ -25,3 +25,4 @@ class PermissionOut(BaseModel):
     revoked_at: datetime | None = None
     revoked_reason: str | None = None
     created_at: datetime
+    tx_hash: str | None = None

@@ -16,11 +16,35 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.deps import get_current_user
 from app.models.audit_outbox import AuditOutbox
+from app.models.file import File
 from app.models.user import User
 from app.schemas.audit import AuditEventCreate, AuditEventResponse, AuditTrailResponse
 from app.services import audit as audit_service
 
 router = APIRouter(prefix="/audit", tags=["audit"])
+
+
+def _build_trail_response(row: AuditOutbox, files_map: dict[str, str], users_map: dict[str, str]) -> AuditTrailResponse:
+    fname = files_map.get(row.reference_id)
+    aname = users_map.get(row.actor, row.actor)
+    dtl = None
+    if isinstance(row.payload, dict):
+        dtl = row.payload.get("detail") or row.payload.get("comment") or row.payload.get("action")
+    return AuditTrailResponse(
+        id=row.id,
+        event_type=row.event_type,
+        reference_id=row.reference_id,
+        file_id=row.reference_id,
+        file_name=fname,
+        actor=row.actor,
+        actor_name=aname,
+        status=row.status,
+        verification="verified" if row.status == "confirmed" else "pending",
+        tx_hash=row.tx_hash,
+        created_at=row.created_at,
+        timestamp=row.created_at.timestamp(),
+        detail=dtl,
+    )
 
 
 @router.post(
@@ -54,19 +78,11 @@ def list_all_audit(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> list[AuditTrailResponse]:
+    files_map = {f.id: f.name for f in db.query(File).all()}
+    users_map = {u.id: u.name for u in db.query(User).all()}
     stmt = select(AuditOutbox).order_by(AuditOutbox.created_at.desc())
     rows = list(db.scalars(stmt))
-    return [
-        AuditTrailResponse(
-            event_type=row.event_type,
-            reference_id=row.reference_id,
-            actor=row.actor,
-            status=row.status,
-            tx_hash=row.tx_hash,
-            created_at=row.created_at,
-        )
-        for row in rows
-    ]
+    return [_build_trail_response(row, files_map, users_map) for row in rows]
 
 
 @router.get(
@@ -79,20 +95,12 @@ def get_audit_trail(
     db: Session = Depends(get_db),
     user: User = Depends(get_current_user),
 ) -> list[AuditTrailResponse]:
+    files_map = {f.id: f.name for f in db.query(File).all()}
+    users_map = {u.id: u.name for u in db.query(User).all()}
     stmt = (
         select(AuditOutbox)
         .where(AuditOutbox.reference_id == file_id)
         .order_by(AuditOutbox.created_at)
     )
     rows = list(db.scalars(stmt))
-    return [
-        AuditTrailResponse(
-            event_type=row.event_type,
-            reference_id=row.reference_id,
-            actor=row.actor,
-            status=row.status,
-            tx_hash=row.tx_hash,
-            created_at=row.created_at,
-        )
-        for row in rows
-    ]
+    return [_build_trail_response(row, files_map, users_map) for row in rows]

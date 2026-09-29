@@ -2,11 +2,13 @@ from datetime import datetime, timezone
 from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, File as FormFile, Form, HTTPException, Response, UploadFile
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.db import get_db
 from app.deps import get_current_user
+from app.models.audit_outbox import AuditOutbox
 from app.models.file import File
 from app.models.permission import PermissionLevel
 from app.models.user import User
@@ -23,17 +25,21 @@ def file_out(db: Session, user: User, f: File) -> FileOut:
     v = versioning.current_version(db, f)
     if v is None:
         raise NotFound("File has no versions.")
+    # Look up confirmed on-chain transaction hash for this document
+    tx_hash = db.scalar(
+        select(AuditOutbox.tx_hash)
+        .where(AuditOutbox.reference_id == f.id, AuditOutbox.tx_hash.isnot(None))
+        .order_by(AuditOutbox.created_at.desc())
+    )
     return FileOut(
         id=f.id,
         name=f.name,
         owner=f.owner_id,
         size=v.size_bytes,
         protection=f.protection_mode,
-        # Self-consistency only (hash recomputed + compared on every read) until
-        # Sriganesh's ChainService confirms the on-chain commitment - see ADR 0005.
         verification="verified",
         hash=v.sha256,
-        ownership_tx=None,
+        ownership_tx=tx_hash,
         content_type=f.content_type,
         current_version=f.current_version,
         approved_version=f.approved_version,
