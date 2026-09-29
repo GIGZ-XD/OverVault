@@ -1,4 +1,5 @@
 """FastAPI dependencies: db session, current user, chain service selection."""
+
 from app.chain.fake import FakeChainService
 from app.chain.real import RealChainService
 from app.config import settings

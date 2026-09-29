@@ -8,17 +8,17 @@ Tests:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from eth_account import Account
 from web3 import Web3
 
 from app.chain.config import MSTChainConfig, mask_secret
-from app.chain.real import RealChainService
 
 
 class TestWalletConfigurationAndMasking:
@@ -33,13 +33,17 @@ class TestWalletConfigurationAndMasking:
         assert mask_secret("short") == "***"
 
     def test_missing_private_key_raises_informative_value_error(self):
-        with patch.dict(os.environ, {"MST_RPC_URL": "http://127.0.0.1:8545"}, clear=True):
-            with pytest.raises(ValueError, match="MST_PRIVATE_KEY"):
-                MSTChainConfig.from_env()
+        with (
+            patch.dict(
+                os.environ, {"MST_RPC_URL": "http://127.0.0.1:8545"}, clear=True
+            ),
+            pytest.raises(ValueError, match="MST_PRIVATE_KEY"),
+        ):
+            MSTChainConfig.from_env()
 
     def test_invalid_private_key_fails_cleanly(self):
         w3 = Web3()
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             w3.eth.account.from_key("not-a-valid-hex-private-key")
 
 

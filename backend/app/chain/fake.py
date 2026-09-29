@@ -6,6 +6,7 @@ reset when the process exits.
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -113,7 +114,9 @@ class FakeChainService:
         Returns:
             TxResult with a confirmed fake transaction hash.
         """
-        tx_hash = self._make_tx_hash(_TX_TYPE_OWNERSHIP, file_id, owner_address, content_hash)
+        tx_hash = self._make_tx_hash(
+            _TX_TYPE_OWNERSHIP, file_id, owner_address, content_hash
+        )
         self._hashes[(file_id, 1)] = content_hash
         return self._store_tx(
             tx_hash,
@@ -143,11 +146,18 @@ class FakeChainService:
         Returns:
             TxResult with a confirmed fake transaction hash.
         """
-        tx_hash = self._make_tx_hash(_TX_TYPE_PERMISSION, file_id, grantee, action, expiry)
+        tx_hash = self._make_tx_hash(
+            _TX_TYPE_PERMISSION, file_id, grantee, action, expiry
+        )
         return self._store_tx(
             tx_hash,
             _TX_TYPE_PERMISSION,
-            {"file_id": file_id, "grantee": grantee, "action": action, "expiry": expiry},
+            {
+                "file_id": file_id,
+                "grantee": grantee,
+                "action": action,
+                "expiry": expiry,
+            },
         )
 
     # -----------------------------------------------------------------------
@@ -219,7 +229,9 @@ class FakeChainService:
         Returns:
             TxResult with a confirmed fake transaction hash.
         """
-        tx_hash = self._make_tx_hash(_TX_TYPE_AUDIT, event_type, ref, actor, int(time.time()))
+        tx_hash = self._make_tx_hash(
+            _TX_TYPE_AUDIT, event_type, ref, actor, int(time.time())
+        )
         result = self._store_tx(
             tx_hash,
             _TX_TYPE_AUDIT,

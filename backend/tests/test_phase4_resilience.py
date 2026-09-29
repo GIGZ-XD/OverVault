@@ -8,6 +8,7 @@ Tests:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 from unittest.mock import MagicMock
@@ -17,12 +18,10 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
-from app.chain.base import TxResult
 from app.chain.fake import FakeChainService
-from app.models.audit_outbox import AuditOutbox, Base
+from app.models.audit_outbox import Base
 from app.services import outbox as outbox_service
 from app.workers.outbox_worker import (
-    UnknownEventTypeError,
     process_pending_events,
     process_single_event,
 )
@@ -67,7 +66,9 @@ class TestRPCFailureAndRecovery:
 
         # Step 1: Simulate RPC failure on first attempt
         broken_chain = MagicMock()
-        broken_chain.log_audit.side_effect = ConnectionError("MST RPC connection timed out (503 Service Unavailable)")
+        broken_chain.log_audit.side_effect = ConnectionError(
+            "MST RPC connection timed out (503 Service Unavailable)"
+        )
 
         res1 = process_single_event(db, broken_chain, event)
         db.commit()
@@ -113,7 +114,9 @@ class TestPermanentFailureAndDeadLetter:
         db.commit()
 
         # Mark dead letter directly when unrecoverable
-        outbox_service.mark_dead_letter(db, event, error="Malformed event signature or schema validation error")
+        outbox_service.mark_dead_letter(
+            db, event, error="Malformed event signature or schema validation error"
+        )
         db.commit()
 
         assert event.status == "dead_letter"

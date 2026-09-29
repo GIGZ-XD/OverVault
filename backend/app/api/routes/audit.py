@@ -10,6 +10,7 @@ handled asynchronously by the outbox worker.
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 from collections.abc import Generator
@@ -200,4 +201,3 @@ def verify_file_audit(
         audit_events=len(rows),
         latest_transaction=latest_tx,
     )
-

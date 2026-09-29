@@ -7,11 +7,10 @@ Covers:
 - Step 4: Transaction metadata (TxResult fields, get_transaction_details on Fake/Real chain)
 - Step 5: Verification APIs (GET /audit/{file_id}, GET /audit/{file_id}/verify, GET /transaction/{tx_hash})
 """
+
 from __future__ import annotations
 
-import json
-from datetime import UTC, datetime
-from unittest.mock import MagicMock
+from datetime import datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -25,9 +24,9 @@ from app.chain.fake import FakeChainService
 from app.deps import get_chain_service
 from app.main import app
 from app.models.audit_event import AuditEvent, AuditEventType
-from app.models.audit_outbox import AuditOutbox, Base
+from app.models.audit_outbox import Base
 from app.services import outbox as outbox_service
-from app.workers.outbox_worker import process_pending_events, process_single_event
+from app.workers.outbox_worker import process_single_event
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -167,7 +166,7 @@ class TestOutboxLifecycleAndRetries:
         assert event.processed_at is not None
 
     def test_get_pending_events_includes_retry_status(self, db):
-        e1 = outbox_service.create_event(
+        outbox_service.create_event(
             db, event_type="upload", reference_id="f1", actor="a"
         )
         e2 = outbox_service.create_event(

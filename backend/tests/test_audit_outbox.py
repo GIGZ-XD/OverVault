@@ -8,6 +8,7 @@ Covers:
 
 Uses SQLite in-memory so no real database or migrations are needed.
 """
+
 from __future__ import annotations
 
 import json
@@ -54,7 +55,9 @@ class TestAuditOutboxModel:
         assert event.status == "pending"
 
     def test_default_retry_count_is_zero(self, db):
-        event = AuditOutbox(event_type="download", reference_id="file-2", actor="user-2")
+        event = AuditOutbox(
+            event_type="download", reference_id="file-2", actor="user-2"
+        )
         db.add(event)
         db.flush()
         assert event.retry_count == 0
@@ -116,8 +119,12 @@ class TestOutboxCreateEvent:
 
 class TestOutboxGetPendingEvents:
     def test_returns_pending_events(self, db):
-        outbox_service.create_event(db, event_type="upload", reference_id="f1", actor="a")
-        outbox_service.create_event(db, event_type="approve", reference_id="f2", actor="b")
+        outbox_service.create_event(
+            db, event_type="upload", reference_id="f1", actor="a"
+        )
+        outbox_service.create_event(
+            db, event_type="approve", reference_id="f2", actor="b"
+        )
         pending = outbox_service.get_pending_events(db)
         assert len(pending) == 2
 

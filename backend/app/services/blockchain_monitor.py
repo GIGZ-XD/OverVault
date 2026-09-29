@@ -8,9 +8,9 @@ Tracks:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
 from sqlalchemy import func, select
@@ -72,28 +72,45 @@ def get_failed_transactions(db: Session, limit: int = 100) -> list[dict[str, Any
 
 def get_confirmation_metrics(db: Session) -> dict[str, Any]:
     """Calculate confirmation volume, success rates, and average latency metrics."""
-    total_confirmed = db.scalar(
-        select(func.count(AuditOutbox.id)).where(AuditOutbox.status == "confirmed")
-    ) or 0
-
-    total_failed = db.scalar(
-        select(func.count(AuditOutbox.id)).where(AuditOutbox.status.in_(["failed", "dead_letter"]))
-    ) or 0
-
-    total_pending = db.scalar(
-        select(func.count(AuditOutbox.id)).where(
-            AuditOutbox.status.in_(["pending", "processing", "submitted", "retry"])
+    total_confirmed = (
+        db.scalar(
+            select(func.count(AuditOutbox.id)).where(AuditOutbox.status == "confirmed")
         )
-    ) or 0
+        or 0
+    )
+
+    total_failed = (
+        db.scalar(
+            select(func.count(AuditOutbox.id)).where(
+                AuditOutbox.status.in_(["failed", "dead_letter"])
+            )
+        )
+        or 0
+    )
+
+    total_pending = (
+        db.scalar(
+            select(func.count(AuditOutbox.id)).where(
+                AuditOutbox.status.in_(["pending", "processing", "submitted", "retry"])
+            )
+        )
+        or 0
+    )
 
     total_all = total_confirmed + total_failed + total_pending
-    success_rate = (total_confirmed / (total_confirmed + total_failed) * 100.0) if (total_confirmed + total_failed) > 0 else 100.0
+    success_rate = (
+        (total_confirmed / (total_confirmed + total_failed) * 100.0)
+        if (total_confirmed + total_failed) > 0
+        else 100.0
+    )
 
     # Calculate average confirmation duration (processed_at - created_at)
     confirmed_rows = list(
         db.scalars(
             select(AuditOutbox)
-            .where(AuditOutbox.status == "confirmed", AuditOutbox.processed_at.is_not(None))
+            .where(
+                AuditOutbox.status == "confirmed", AuditOutbox.processed_at.is_not(None)
+            )
             .limit(500)
         )
     )
@@ -127,9 +144,12 @@ def get_gas_metrics(db: Session, chain: ChainService | None = None) -> dict[str,
         "Permission.grantPermission": 50000,
     }
 
-    confirmed_count = db.scalar(
-        select(func.count(AuditOutbox.id)).where(AuditOutbox.status == "confirmed")
-    ) or 0
+    confirmed_count = (
+        db.scalar(
+            select(func.count(AuditOutbox.id)).where(AuditOutbox.status == "confirmed")
+        )
+        or 0
+    )
 
     estimated_total_gas = confirmed_count * 52000
 

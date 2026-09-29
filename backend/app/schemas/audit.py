@@ -9,6 +9,7 @@ Provides request/response schemas for the audit outbox pipeline.
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 from datetime import datetime
@@ -85,7 +86,9 @@ class AuditEventResponse(BaseModel):
         default=None,
         description="On-chain transaction hash. None until submitted to blockchain.",
     )
-    created_at: datetime = Field(..., description="UTC timestamp when the event was recorded.")
+    created_at: datetime = Field(
+        ..., description="UTC timestamp when the event was recorded."
+    )
 
     model_config = {"from_attributes": True}
 
@@ -110,7 +113,9 @@ class AuditTrailResponse(BaseModel):
         default=None,
         description="On-chain transaction hash if the event has been submitted.",
     )
-    created_at: datetime = Field(..., description="UTC timestamp when the event was recorded.")
+    created_at: datetime = Field(
+        ..., description="UTC timestamp when the event was recorded."
+    )
 
     model_config = {"from_attributes": True}
 
@@ -122,11 +127,18 @@ class AuditVerifyResponse(BaseModel):
     """
 
     file_id: str = Field(..., description="Target file identifier.")
-    integrity: str = Field(..., description="Integrity verification status: 'verified', 'unverified', or 'pending'.")
-    ownership: str = Field(..., description="Ownership verification status: 'verified', 'unverified', or 'pending'.")
-    audit_events: int = Field(..., description="Total count of audit events recorded for the file.")
+    integrity: str = Field(
+        ...,
+        description="Integrity verification status: 'verified', 'unverified', or 'pending'.",
+    )
+    ownership: str = Field(
+        ...,
+        description="Ownership verification status: 'verified', 'unverified', or 'pending'.",
+    )
+    audit_events: int = Field(
+        ..., description="Total count of audit events recorded for the file."
+    )
     latest_transaction: str | None = Field(
         default=None,
         description="Most recent on-chain transaction hash for this file.",
     )
-

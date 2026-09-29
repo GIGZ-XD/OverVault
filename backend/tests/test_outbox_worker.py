@@ -6,6 +6,7 @@ All tests use:
 - Direct call to process_single_event() for unit-level assertions
 - Direct call to process_pending_events() for batch-level assertions
 """
+
 from __future__ import annotations
 
 import json
@@ -147,7 +148,9 @@ class TestProcessSingleEventAudit:
 
     def test_chain_log_audit_called_for_generic_event(self, db, chain):
         """Verify the correct ChainService method is dispatched."""
-        event = _make_event(db, event_type="delete", reference_id="file-42", actor="admin")
+        event = _make_event(
+            db, event_type="delete", reference_id="file-42", actor="admin"
+        )
         process_single_event(db, chain, event)
         # FakeChainService stores audit records; verify one was added
         trail = chain.get_audit_trail("file-42")

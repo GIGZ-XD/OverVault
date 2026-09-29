@@ -25,12 +25,12 @@ Event-type routing:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import json
 import logging
 import os
-import time
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -231,8 +231,11 @@ def process_single_event(
                     event.tx_hash,
                 )
                 return outbox_service.mark_confirmed(db, event)
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception:
+            logger.debug(
+                "Transaction verification failed during duplicate check",
+                exc_info=True,
+            )
 
     payload = _parse_payload(event.payload)
 
@@ -296,7 +299,12 @@ def process_single_event(
         return outbox_service.mark_confirmed(db, event)
 
     err_msg = f"Transaction {tx_result.tx_hash} not confirmed on chain"
-    logger.warning("Outbox row %s (tx_hash=%s): %s — marking failed.", event.id, tx_result.tx_hash, err_msg)
+    logger.warning(
+        "Outbox row %s (tx_hash=%s): %s — marking failed.",
+        event.id,
+        tx_result.tx_hash,
+        err_msg,
+    )
     return outbox_service.mark_failed(db, event, error=err_msg)
 
 
@@ -335,7 +343,9 @@ def process_pending_events(
     if events:
         logger.info(
             "Outbox batch complete: %d confirmed, %d failed (of %d processed).",
-            confirmed_count, failed_count, len(events),
+            confirmed_count,
+            failed_count,
+            len(events),
         )
 
     return confirmed_count, failed_count

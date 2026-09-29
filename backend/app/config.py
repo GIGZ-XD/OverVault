@@ -8,7 +8,9 @@ class Settings(BaseSettings):
 
     auth_mode: Literal["dev", "wallet"] = "dev"
     chain_mode: Literal["fake", "testnet", "real"] = "fake"
-    database_url: str = "postgresql+psycopg://overvault:overvault@localhost:5432/overvault"
+    database_url: str = (
+        "postgresql+psycopg://overvault:overvault@localhost:5432/overvault"
+    )
     jwt_secret: str = "change-me"
     jwt_expires_minutes: int = 60
     storage_endpoint: str = "http://localhost:9000"

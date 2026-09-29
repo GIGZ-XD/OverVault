@@ -8,11 +8,12 @@ Validates:
 
 Owner: Sriganesh (Blockchain & Audit Engineer).
 """
+
 from __future__ import annotations
 
 import os
 from datetime import UTC, datetime, timedelta
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -24,14 +25,10 @@ from app.chain.fake import FakeChainService
 from app.deps import get_chain_service
 from app.main import app
 from app.models.audit_outbox import AuditOutbox, Base
-from app.services import blockchain_monitor, outbox as outbox_service
+from app.services import blockchain_monitor
 from app.workers.outbox_worker import (
-    DEFAULT_BATCH_SIZE,
-    DEFAULT_POLL_INTERVAL,
-    TX_TIMEOUT_SECONDS,
     process_pending_events,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -86,9 +83,11 @@ def test_mst_chain_config_from_env():
 
 
 def test_mst_chain_config_missing_required():
-    with patch.dict(os.environ, {}, clear=True):
-        with pytest.raises(ValueError, match="is required"):
-            MSTChainConfig.from_env()
+    with (
+        patch.dict(os.environ, {}, clear=True),
+        pytest.raises(ValueError, match="is required"),
+    ):
+        MSTChainConfig.from_env()
 
 
 def test_mask_secret_helper():
