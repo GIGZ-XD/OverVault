@@ -195,28 +195,28 @@ class RealChainService:
         """Build, sign, broadcast a contract call and return a TxResult.
 
         Args:
-            fn: A Web3 contract function ready to be called
-                (e.g. ``self._audit.functions.logAudit(...)``).
+            fn: A Web3 contract function ready to be called.
 
         Returns:
-            :class:`~app.chain.base.TxResult` with the real transaction hash
-            and a confirmed/failed status.
+            TxResult containing transaction hash and status.
 
         Raises:
-            ContractLogicError: Propagated if the transaction is reverted
-                by the contract.
-            Exception: Re-raised with context for any other unexpected error.
+            ContractLogicError: If the contract reverts.
+            Exception: For unexpected transaction failures.
         """
         try:
             nonce = self._w3.eth.get_transaction_count(self._account.address)
+            gas_estimate = fn.estimate_gas({"from": self._account.address})
+
             tx = fn.build_transaction(
                 {
                     "from": self._account.address,
                     "nonce": nonce,
-                    "gas": 500_000,
+                    "gas": gas_estimate + 50_000,
                     "gasPrice": self._w3.eth.gas_price,
                 }
             )
+
             signed = self._account.sign_transaction(tx)
             tx_hash_bytes = self._w3.eth.send_raw_transaction(signed.raw_transaction)
             tx_hash = tx_hash_bytes.hex()
@@ -225,12 +225,23 @@ class RealChainService:
 
             receipt = self._w3.eth.wait_for_transaction_receipt(tx_hash_bytes, timeout=120)
             status: TxStatus = "confirmed" if receipt.status == 1 else "failed"
-            logger.debug("tx %s — status=%s block=%s", tx_hash, status, receipt.blockNumber)
-            return TxResult(tx_hash=tx_hash, status=status)
+
+            logger.info(
+                "Transaction completed tx=%s status=%s block=%s",
+                tx_hash,
+                status,
+                receipt.blockNumber,
+            )
+
+            return TxResult(
+                tx_hash=tx_hash,
+                status=status,
+            )
 
         except ContractLogicError as exc:
             logger.warning("Contract reverted: %s", exc)
             raise
+
         except Exception:
             logger.exception("Unexpected error sending transaction")
             raise
